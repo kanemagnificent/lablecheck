@@ -4,6 +4,7 @@ opencv-python-headless
 numpy
 python-dotenv
 Pillow
+pytesseract
 python-multipart
 groq
 slowapi

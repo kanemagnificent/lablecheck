@@ -43,49 +43,54 @@ def rotate_image(image: np.ndarray, angle: int) -> np.ndarray:
     return image
 
 
-def _run_groq_vision_ocr(image_path: str) -> Tuple[List[Dict[str, Any]], float]:
-    """Use Groq vision API to extract text from image. No system dependencies required."""
+def _run_ocr_on_image(image_path: str) -> Tuple[List[Dict[str, Any]], float]:
+    """Extract text from image using pytesseract with OpenCV preprocessing."""
     try:
-        import base64
-        from PIL import Image
-        import io
+        import pytesseract
+        img = cv2.imread(image_path)
+        if img is None:
+            return [], 0.0
 
-        # Load and resize image to reduce API payload size
-        img = Image.open(image_path)
-        img.thumbnail((1024, 1024), Image.LANCZOS)
-        buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=85)
-        b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        best_blocks, best_score = [], 0.0
+        best_text = ""
 
-        client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-        response = client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": f"data:image/jpeg;base64,{b64}"}
-                        },
-                        {
-                            "type": "text",
-                            "text": "Extract ALL text visible in this product label image. Return ONLY the raw text you see, exactly as printed. Include every word, number, symbol, and line. Do not add any commentary or explanation."
-                        }
-                    ]
-                }
-            ],
-            max_tokens=2048
-        )
-        raw_text = response.choices[0].message.content.strip()
-        # Create a single high-confidence block from Groq's output
-        if raw_text:
-            return [{"text": raw_text, "confidence": 0.95, "bbox": [0, 0, 100, 100]}], 0.95
-        return [], 0.0
+        for angle in [0, 90, 270, 180]:
+            if angle == 90:
+                rotated = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+            elif angle == 180:
+                rotated = cv2.rotate(img, cv2.ROTATE_180)
+            elif angle == 270:
+                rotated = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
+            else:
+                rotated = img
+
+            gray = cv2.cvtColor(rotated, cv2.COLOR_BGR2GRAY)
+            denoised = cv2.fastNlMeansDenoising(gray, h=10)
+            thresh = cv2.adaptiveThreshold(
+                denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+            )
+
+            data = pytesseract.image_to_data(thresh, output_type=pytesseract.Output.DICT)
+            blocks, confidences = [], []
+            for i in range(len(data['text'])):
+                text = data['text'][i].strip()
+                conf = float(data['conf'][i])
+                if text and conf > 0:
+                    blocks.append({"text": text, "confidence": conf / 100.0, "bbox": [data['left'][i], data['top'][i], data['width'][i], data['height'][i]]})
+                    confidences.append(conf / 100.0)
+
+            raw = " ".join([b["text"] for b in blocks])
+            score = len(raw) * (float(np.mean(confidences)) if confidences else 0.0)
+            if score > best_score:
+                best_score = score
+                best_blocks = blocks
+                best_text = raw
+
+        avg_conf = float(np.mean([b["confidence"] for b in best_blocks])) if best_blocks else 0.0
+        return best_blocks, avg_conf
     except Exception as e:
-        print(f"Groq vision OCR error: {e}")
+        print(f"OCR error: {e}")
         return [], 0.0
-
 
 
 class HybridOCREngine:
@@ -94,8 +99,7 @@ class HybridOCREngine:
         if original_img is None:
             raise ValueError(f"Could not read image at {image_path}")
 
-        # Use Groq Vision API — handles rotation automatically, no system deps needed
-        blocks, avg_conf = _run_groq_vision_ocr(image_path)
+        blocks, avg_conf = _run_ocr_on_image(image_path)
         raw_text = " ".join([b["text"] for b in blocks])
 
         return {
@@ -104,6 +108,7 @@ class HybridOCREngine:
             "overall_confidence": avg_conf,
             "image_shape": original_img.shape
         }
+
 
     def extract_multiple(self, image_paths: Union[List[str], str]) -> Dict[str, Any]:
         paths = [p.strip() for p in image_paths.split(",")] if isinstance(image_paths, str) else image_paths

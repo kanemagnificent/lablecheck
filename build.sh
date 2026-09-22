@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Install system dependencies for Tesseract OCR
-apt-get install -y tesseract-ocr 2>/dev/null || true
+set -e
+
+# Install Tesseract OCR binary
+apt-get update -qq && apt-get install -y -qq tesseract-ocr tesseract-ocr-eng libgl1-mesa-glx libglib2.0-0
 
 # Install Python dependencies
 pip install -r requirements.txt
