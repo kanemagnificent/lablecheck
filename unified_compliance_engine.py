@@ -212,7 +212,7 @@ def analyze_with_groq(raw_text: str) -> Dict[str, Any]:
                 {"role": "system", "content": "You are a helpful assistant that outputs only valid JSON."},
                 {"role": "user", "content": prompt}
             ],
-            model="openai/gpt-oss-120b",
+            model="llama-3.3-70b-versatile",
             response_format={"type": "json_object"}
         )
         content = response.choices[0].message.content
