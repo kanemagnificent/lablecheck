@@ -17,14 +17,7 @@ load_dotenv()
 
 from toxicity_engine import run_toxicity_analysis
 
-_EASYOCR_READER = None
 
-def get_easyocr_reader():
-    global _EASYOCR_READER
-    if _EASYOCR_READER is None:
-        import easyocr
-        _EASYOCR_READER = easyocr.Reader(['en'], gpu=False)
-    return _EASYOCR_READER
 
 
 def preprocess_image(image_path: str) -> Tuple[np.ndarray, np.ndarray]:
@@ -69,36 +62,13 @@ def _run_tesseract(processed_image: np.ndarray) -> Tuple[List[Dict[str, Any]], f
 class HybridOCREngine:
     def extract(self, image_path: str) -> Dict[str, Any]:
         original_img, processed = preprocess_image(image_path)
-        reader = get_easyocr_reader()
-
+        
         best_blocks, best_conf, best_text = [], 0.0, ""
 
         for angle in [0, 90, 270, 180]:
-            target_img = rotate_image(original_img, angle) if angle != 0 else original_img
-            if angle != 0:
-                temp_path = f"temp_rot_{angle}.jpg"
-                cv2.imwrite(temp_path, target_img)
-                scan_target = temp_path
-            else:
-                scan_target = image_path
-
-            try:
-                results = reader.readtext(scan_target)
-            finally:
-                if angle != 0 and os.path.exists(temp_path):
-                    os.remove(temp_path)
-
-            blocks, confidences = [], []
-            for bbox, text, conf in results:
-                text_clean = text.strip()
-                if text_clean:
-                    blocks.append({"text": text_clean, "confidence": float(conf), "bbox": bbox})
-                    confidences.append(float(conf))
-
-            avg_conf = float(np.mean(confidences)) if confidences else 0.0
+            target_img = rotate_image(processed, angle) if angle != 0 else processed
+            blocks, avg_conf = _run_tesseract(target_img)
             raw_text = " ".join([b["text"] for b in blocks])
-            
-            # Score balances both the amount of text extracted and the confidence
             score = len(raw_text) * avg_conf
 
             if score > best_conf:
