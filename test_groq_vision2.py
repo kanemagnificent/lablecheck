@@ -1,0 +1,38 @@
+import os
+import json
+import base64
+from groq import Groq
+from dotenv import load_dotenv
+
+load_dotenv()
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+def encode_image(image_path):
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode('utf-8')
+
+image_path = "uploads/3eaecc34-f24a-4835-930c-72d87010a59b_ff4cf377-4187-4f8f-ac8d-ecd34e5962c7.jpg"
+base64_image = encode_image(image_path)
+
+try:
+    response = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "Extract all the text you can read from this label."},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{base64_image}",
+                        },
+                    },
+                ],
+            }
+        ],
+        model="llama-3.2-11b-vision-preview",
+    )
+    print("VISION SUCCESS!")
+    print(response.choices[0].message.content)
+except Exception as e:
+    print("VISION FAILED:", e)

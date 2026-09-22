@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@theme {
+  --color-compliant: #22c55e;
+  --color-noncompliant: #ef4444;
+  --color-warning: #f59e0b;
+  --color-critical: #991b1b;
+  --color-major: #dc2626;
+  --color-minor: #fca5a5;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+@layer base {
+  :root {
+    --background: #ffffff;
+    --foreground: #171717;
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    @apply antialiased text-gray-900 bg-white;
+  }
+}
+
+/* Base focus styles for accessibility */
+*:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
