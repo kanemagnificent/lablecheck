@@ -3,6 +3,7 @@ uvicorn
 opencv-python-headless
 numpy
 python-dotenv
-pytesseract
+Pillow
 python-multipart
 groq
+slowapi
