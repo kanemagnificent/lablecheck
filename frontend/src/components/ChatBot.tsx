@@ -54,11 +54,11 @@ export default function ChatBot() {
         body: JSON.stringify({
           message: text,
           scan_context: latestScan ? {
-            product_name: latestScan.product || '',
+            product_name: latestScan.productName || '',
             status: latestScan.status || '',
             score: latestScan.score || 0,
-            violations: latestScan.violations || [],
-            warnings: latestScan.warnings || [],
+            violations: (latestScan.violations || []).map((v: any) => v.rule || v.label || String(v)),
+            warnings: [],
           } : null,
           history: messages.slice(-6).map(m => ({ role: m.role, content: m.content }))
         }),
