@@ -14,14 +14,26 @@ export default function InspectorDashboard() {
   const [activeTab, setActiveTab] = useState<'metrics' | 'map'>('metrics');
 
   const pendingNotices = notices.filter(n => n.status === 'SUBMITTED');
-  const userFlags = scans.filter(s => s.status !== 'COMPLIANT'); // Mock logic: all non-compliant scans are flagged
+  const userFlags = scans.filter(s => s.status !== 'COMPLIANT');
 
-  const violationTypes = [
-    { name: 'Missing MRP', count: 42 },
-    { name: 'Invalid Address', count: 28 },
-    { name: 'Font Size Rule', count: 19 },
-    { name: 'Net Quantity', count: 12 },
-  ];
+  // Real computed stats from actual scan data
+  const totalAudited = scans.length;
+  const criticalViolations = scans.filter(s => s.status === 'NON_COMPLIANT').length;
+  const noticesIssued = notices.length;
+  const resolvedNotices = notices.filter(n => n.status === 'RESOLVED').length;
+
+  // Real violation type breakdown from actual scan data
+  const violationCounts: Record<string, number> = {};
+  scans.forEach(s => {
+    s.violations?.forEach((v: any) => {
+      const label = v.field || v.rule || 'Other';
+      violationCounts[label] = (violationCounts[label] || 0) + 1;
+    });
+  });
+  const violationTypes = Object.entries(violationCounts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6);
 
   return (
     <div className="max-w-[1200px] mx-auto space-y-6">
@@ -37,10 +49,10 @@ export default function InspectorDashboard() {
 
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KPICard title="Total Audited" value="1,204" subtext="This month" />
-        <KPICard title="Critical Violations" value="142" subtext="12% of total" alert />
-        <KPICard title="Notices Issued" value="89" subtext="45 resolved" />
-        <KPICard title="Fines Collected" value="₹4.2L" subtext="YTD" />
+        <KPICard title="Total Audited" value={totalAudited.toString()} subtext="All scans" />
+        <KPICard title="Critical Violations" value={criticalViolations.toString()} subtext={`${totalAudited > 0 ? Math.round((criticalViolations/totalAudited)*100) : 0}% of total`} alert={criticalViolations > 0} />
+        <KPICard title="Notices Issued" value={noticesIssued.toString()} subtext={`${resolvedNotices} resolved`} />
+        <KPICard title="Compliance Rate" value={totalAudited > 0 ? `${Math.round(((totalAudited - criticalViolations) / totalAudited) * 100)}%` : 'N/A'} subtext="Based on scans" />
       </div>
 
       {/* Dense Data Section */}
@@ -61,6 +73,13 @@ export default function InspectorDashboard() {
           
           <div className="flex-1 p-6 relative">
             {activeTab === 'metrics' ? (
+              violationTypes.length === 0 ? (
+                <div className="w-full h-full flex flex-col items-center justify-center text-center">
+                  <BarChart3 className="w-12 h-12 text-gray-200 mb-3" />
+                  <p className="text-gray-500 font-medium">No violation data yet</p>
+                  <p className="text-sm text-gray-400">Violations from scans will appear here.</p>
+                </div>
+              ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={violationTypes} layout="vertical" margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f3f4f6" />
@@ -74,6 +93,7 @@ export default function InspectorDashboard() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              )
             ) : (
               <div className="w-full h-full bg-[#f8fafc] rounded-lg border border-gray-200 flex items-center justify-center overflow-hidden relative">
                 {/* Fallback mock map rendering since loading topojson dynamically can be tricky in mock env */}

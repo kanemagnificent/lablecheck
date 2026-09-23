@@ -9,7 +9,32 @@ export default function ManufacturerDashboard() {
   const { notices, scans } = useAppStore();
 
   const activeNotices = notices.filter(n => n.status === 'ISSUED' || n.status === 'UNDER_CORRECTION');
-  
+  const compliantScans = scans.filter(s => s.status === 'COMPLIANT').length;
+  const complianceRate = scans.length > 0 ? Math.round((compliantScans / scans.length) * 100) : null;
+
+  // Nearest deadline from active notices
+  const nearestDeadline = activeNotices.length > 0
+    ? activeNotices.reduce((nearest, n) => {
+        const d = new Date(n.deadline).getTime();
+        const days = Math.ceil((d - Date.now()) / 86400000);
+        return days < nearest ? days : nearest;
+      }, Infinity)
+    : null;
+
+  // Real activity from recent scans + notices
+  const recentActivity = [
+    ...scans.slice(0, 3).map(s => ({
+      text: `Label scanned: "${s.productName}" — ${s.status === 'COMPLIANT' ? 'Compliant' : s.status === 'NON_COMPLIANT' ? 'Non-Compliant' : 'Warning'}`,
+      time: new Date(s.timestamp).toLocaleDateString(),
+      status: s.status === 'COMPLIANT' ? 'resolved' : s.status === 'NON_COMPLIANT' ? 'danger' : 'pending' as any,
+    })),
+    ...notices.slice(0, 2).map(n => ({
+      text: `Notice ${n.status === 'RESOLVED' ? 'resolved' : 'issued'} for "${n.productName}"`,
+      time: new Date(n.issuedAt).toLocaleDateString(),
+      status: n.status === 'RESOLVED' ? 'resolved' : 'danger' as any,
+    }))
+  ].slice(0, 5);
+
   return (
     <div className="max-w-5xl mx-auto space-y-8">
       <div className="flex justify-between items-end">
@@ -21,10 +46,10 @@ export default function ManufacturerDashboard() {
 
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KPICard title="Active Notices" value={activeNotices.length.toString()} icon={<AlertCircle className="w-5 h-5 text-red-500" />} trend="+2 this month" trendUp={false} />
+        <KPICard title="Active Notices" value={activeNotices.length.toString()} icon={<AlertCircle className="w-5 h-5 text-red-500" />} trend={activeNotices.length > 0 ? `${activeNotices.length} pending` : undefined} trendUp={false} />
         <KPICard title="Products Audited" value={scans.length.toString()} icon={<FileCheck className="w-5 h-5 text-blue-500" />} />
-        <KPICard title="Compliance Rate" value="92%" icon={<Target className="w-5 h-5 text-green-500" />} trend="+4% vs last Q" trendUp={true} />
-        <KPICard title="Nearest Deadline" value="3 Days" icon={<Clock className="w-5 h-5 text-amber-500" />} />
+        <KPICard title="Compliance Rate" value={complianceRate !== null ? `${complianceRate}%` : 'N/A'} icon={<Target className="w-5 h-5 text-green-500" />} trend={complianceRate !== null ? `${compliantScans}/${scans.length} scans` : undefined} trendUp={complianceRate !== null && complianceRate >= 80} />
+        <KPICard title="Nearest Deadline" value={nearestDeadline !== null && nearestDeadline !== Infinity ? `${nearestDeadline}d` : 'None'} icon={<Clock className="w-5 h-5 text-amber-500" />} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -67,9 +92,13 @@ export default function ManufacturerDashboard() {
           <div className="p-5 flex-1 relative">
             <div className="absolute left-6 top-5 bottom-5 w-px bg-gray-200" />
             <div className="space-y-6 relative">
-              <ActivityItem text="Corrective action submitted for 'Acme Chips'" time="2 hours ago" status="pending" />
-              <ActivityItem text="Inspector resolved notice #LM-892" time="1 day ago" status="resolved" />
-              <ActivityItem text="New notice issued for 'Acme Soap'" time="3 days ago" status="danger" />
+              {recentActivity.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-8">No activity yet. Start by scanning a product.</p>
+              ) : (
+                recentActivity.map((item, i) => (
+                  <ActivityItem key={i} text={item.text} time={item.time} status={item.status} />
+                ))
+              )}
             </div>
           </div>
         </div>

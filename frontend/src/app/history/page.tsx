@@ -25,10 +25,8 @@ export default function HistoryPage() {
     .finally(() => setLoading(false));
   }, [setScans]);
 
-  // Users only see their own scans (mocked as the first 2 scans for demo purposes)
-  const accessibleScans = role === 'USER' ? scans.slice(0, 2) : scans;
-
-  const filteredScans = accessibleScans.filter((scan) => {
+  // All roles see all real scans from the backend
+  const filteredScans = scans.filter((scan) => {
     const matchesSearch = scan.productName.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'ALL' || scan.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -77,11 +75,11 @@ export default function HistoryPage() {
           <HistoryIcon className="w-12 h-12 text-gray-300 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No scans found</h3>
           <p className="text-gray-500 mb-6 max-w-md">
-            {accessibleScans.length === 0 
-              ? "You haven't scanned any products yet. Scan your first product to see it here."
+            {scans.length === 0
+              ? "No products have been scanned yet. Scan your first product to see it here."
               : "No scans match your current filters. Try adjusting your search."}
           </p>
-          {accessibleScans.length === 0 && (
+          {scans.length === 0 && (
             <Link href="/scan" className="bg-gray-900 text-white px-6 py-2.5 rounded-md font-medium hover:bg-gray-800 transition-colors">
               Scan a product
             </Link>

@@ -128,6 +128,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           {role === 'MANUFACTURER' && (
             <>
               <Link href="/scan" className={`text-sm font-medium ${pathname === '/scan' ? 'text-gray-900 border-b-2 border-gray-900 h-full flex items-center' : 'text-gray-500 hover:text-gray-900'}`}>{t('scanProduct')}</Link>
+              <Link href="/history" className={`text-sm font-medium ${pathname === '/history' ? 'text-gray-900 border-b-2 border-gray-900 h-full flex items-center' : 'text-gray-500 hover:text-gray-900'}`}>History</Link>
               <Link href="/manufacturer/dashboard" className={`text-sm font-medium ${pathname.includes('dashboard') ? 'text-gray-900 border-b-2 border-gray-900 h-full flex items-center' : 'text-gray-500 hover:text-gray-900'}`}>{t('dashboard')}</Link>
               <Link href="/manufacturer/products" className={`text-sm font-medium ${pathname.includes('products') ? 'text-gray-900 border-b-2 border-gray-900 h-full flex items-center' : 'text-gray-500 hover:text-gray-900'}`}>{t('products')}</Link>
               <Link href="/manufacturer/rulebook" className={`text-sm font-medium ${pathname.includes('rulebook') ? 'text-gray-900 border-b-2 border-gray-900 h-full flex items-center' : 'text-gray-500 hover:text-gray-900'}`}>{t('rulebook')}</Link>
@@ -136,6 +137,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           {role === 'INSPECTOR' && (
             <>
               <Link href="/scan" className={`text-sm font-medium ${pathname === '/scan' ? 'text-gray-900 border-b-2 border-gray-900 h-full flex items-center' : 'text-gray-500 hover:text-gray-900'}`}>{t('scanProduct')}</Link>
+              <Link href="/history" className={`text-sm font-medium ${pathname === '/history' ? 'text-gray-900 border-b-2 border-gray-900 h-full flex items-center' : 'text-gray-500 hover:text-gray-900'}`}>History</Link>
               <Link href="/inspector/dashboard" className={`text-sm font-medium ${pathname.includes('dashboard') ? 'text-gray-900 border-b-2 border-gray-900 h-full flex items-center' : 'text-gray-500 hover:text-gray-900'}`}>{t('dashboard')}</Link>
               <Link href="/inspector/queue" className={`text-sm font-medium ${pathname.includes('queue') ? 'text-gray-900 border-b-2 border-gray-900 h-full flex items-center' : 'text-gray-500 hover:text-gray-900'}`}>{t('queue')}</Link>
             </>
