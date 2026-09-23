@@ -2,14 +2,14 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Upload, QrCode, FileImage, X, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Camera, Upload, FileImage, X, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Webcam from 'react-webcam';
 import { uploadScan, dataURLtoFile } from '../../lib/api';
 import { useAppStore } from '../../context/store';
 import { adaptBackendScan } from '../../mock/data';
 
-type InputMode = 'CAMERA' | 'UPLOAD' | 'BARCODE';
+type InputMode = 'CAMERA' | 'UPLOAD';
 type ScanStage = 'IDLE' | 'READING' | 'EXTRACTING' | 'CHECKING' | 'SCORING' | 'COMPLETE';
 
 export default function ScanPage() {
@@ -151,7 +151,6 @@ export default function ScanPage() {
       <div className="flex bg-gray-100 p-1 rounded-lg mb-6 w-full sm:w-auto">
         <ModeButton active={mode === 'CAMERA'} onClick={() => setMode('CAMERA')} icon={<Camera size={18}/>} label="Camera" />
         <ModeButton active={mode === 'UPLOAD'} onClick={() => setMode('UPLOAD')} icon={<Upload size={18}/>} label="Upload" />
-        <ModeButton active={mode === 'BARCODE'} onClick={() => setMode('BARCODE')} icon={<QrCode size={18}/>} label="Barcode" />
       </div>
 
       {/* Input Area */}
@@ -228,15 +227,7 @@ export default function ScanPage() {
           </div>
         )}
 
-        {mode === 'BARCODE' && (
-          <div className="flex-1 bg-gray-100 rounded-xl mb-6 flex items-center justify-center border p-8">
-            <div className="text-center">
-              <QrCode className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-900 font-medium">Barcode scanning</p>
-              <p className="text-sm text-gray-500">Feature placeholder for html5-qrcode</p>
-            </div>
-          </div>
-        )}
+
 
         {/* Actions */}
         {frontImage && (

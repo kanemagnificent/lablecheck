@@ -312,9 +312,3 @@ def run_full_check(raw_text: str, font_size_input: dict = None,
         **audit_result
     }
 
-# PART 7: TEST CASES
-if __name__ == "__main__":
-
-    good_label = """Crispy Wheat Biscuits
-        Net Wt: 200 g
-    }

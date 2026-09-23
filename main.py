@@ -214,6 +214,60 @@ async def api_update_notice_status(notice_id: str, req: NoticeStatusUpdateReques
     update_notice_status(notice_id, req.status)
     return {"message": "Status updated"}
 
+
+# --- Chat Endpoint ---
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    message: str
+    scan_context: Optional[dict] = None
+    history: Optional[List[ChatMessage]] = None
+
+@app.post("/chat/")
+async def chat_endpoint(req: ChatRequest):
+    from groq import Groq
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="AI service not configured.")
+
+    system_prompt = """You are LabelCheck AI, a friendly and knowledgeable compliance assistant specializing in Indian Legal Metrology (Packaged Commodities) Rules, 2011.
+
+Your role is to:
+- Help users understand product label compliance results
+- Explain what fields are mandatory on Indian product labels (MRP, net quantity, manufacturer details, batch number, mfg date, consumer care number)
+- Answer questions about Legal Metrology rules clearly and simply
+- Suggest corrective actions for non-compliant labels
+- Be concise, helpful, and friendly
+
+Keep responses short (2-4 sentences max) unless a detailed explanation is needed."""
+
+    if req.scan_context:
+        ctx = req.scan_context
+        system_prompt += f"\n\nThe user's latest scan result:\n- Product: {ctx.get('product_name', 'Unknown')}\n- Status: {ctx.get('status', 'Unknown')}\n- Score: {ctx.get('score', 0)}/100\n- Violations: {', '.join(ctx.get('violations', [])) or 'None'}\n- Warnings: {', '.join(ctx.get('warnings', [])) or 'None'}"
+
+    messages = [{"role": "system", "content": system_prompt}]
+    if req.history:
+        for msg in req.history[-6:]:
+            messages.append({"role": msg.role, "content": msg.content})
+    messages.append({"role": "user", "content": req.message})
+
+    try:
+        client = Groq(api_key=api_key)
+        response = client.chat.completions.create(
+            model="openai/gpt-oss-120b",
+            messages=messages,
+            max_tokens=512,
+            temperature=0.7,
+        )
+        reply = response.choices[0].message.content.strip()
+        return {"reply": reply}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI error: {str(e)}")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
