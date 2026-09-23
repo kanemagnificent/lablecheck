@@ -22,6 +22,7 @@ import sqlite3
 import json
 from pathlib import Path
 from datetime import datetime
+from contextlib import closing
  
  
 DB_PATH = Path(__file__).resolve().parent / "data" / "audit.db"
@@ -39,59 +40,57 @@ def _column_names(conn, table: str):
 def init_db():
     """Create the database and audit log table (idempotent, migration-safe)."""
  
-    conn = _get_conn()
- 
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS audit_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TEXT NOT NULL,
-            scan_id TEXT NOT NULL,
-            filename TEXT NOT NULL,
-            status TEXT NOT NULL,
-            confidence REAL NOT NULL,
-            violations TEXT NOT NULL,
-            warnings TEXT NOT NULL,
-            audit_trail TEXT NOT NULL,
-            fields TEXT,
-            font_size_check TEXT,
-            compliance_score INTEGER,
-            needs_manual_review TEXT,
-            ai_analysis TEXT,
-            toxicity_analysis TEXT
-        )
-    """)
- 
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS notices (
-            id TEXT PRIMARY KEY,
-            scan_id TEXT NOT NULL,
-            product_name TEXT NOT NULL,
-            manufacturer TEXT NOT NULL,
-            issued_at TEXT NOT NULL,
-            deadline TEXT NOT NULL,
-            status TEXT NOT NULL,
-            violations TEXT NOT NULL,
-            fine_amount REAL
-        )
-    """)
- 
-    # Migration path for pre-existing databases created by an older version
-    # of this module that only had the original 9 columns.
-    existing = _column_names(conn, "audit_logs")
-    migrations = {
-        "fields": "ALTER TABLE audit_logs ADD COLUMN fields TEXT",
-        "font_size_check": "ALTER TABLE audit_logs ADD COLUMN font_size_check TEXT",
-        "compliance_score": "ALTER TABLE audit_logs ADD COLUMN compliance_score INTEGER",
-        "needs_manual_review": "ALTER TABLE audit_logs ADD COLUMN needs_manual_review TEXT",
-        "ai_analysis": "ALTER TABLE audit_logs ADD COLUMN ai_analysis TEXT",
-        "toxicity_analysis": "ALTER TABLE audit_logs ADD COLUMN toxicity_analysis TEXT",
-    }
-    for col, ddl in migrations.items():
-        if col not in existing:
-            conn.execute(ddl)
- 
-    conn.commit()
-    conn.close()
+    with closing(_get_conn()) as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS audit_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                scan_id TEXT NOT NULL,
+                filename TEXT NOT NULL,
+                status TEXT NOT NULL,
+                confidence REAL NOT NULL,
+                violations TEXT NOT NULL,
+                warnings TEXT NOT NULL,
+                audit_trail TEXT NOT NULL,
+                fields TEXT,
+                font_size_check TEXT,
+                compliance_score INTEGER,
+                needs_manual_review TEXT,
+                ai_analysis TEXT,
+                toxicity_analysis TEXT
+            )
+        """)
+    
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS notices (
+                id TEXT PRIMARY KEY,
+                scan_id TEXT NOT NULL,
+                product_name TEXT NOT NULL,
+                manufacturer TEXT NOT NULL,
+                issued_at TEXT NOT NULL,
+                deadline TEXT NOT NULL,
+                status TEXT NOT NULL,
+                violations TEXT NOT NULL,
+                fine_amount REAL
+            )
+        """)
+    
+        # Migration path for pre-existing databases created by an older version
+        # of this module that only had the original 9 columns.
+        existing = _column_names(conn, "audit_logs")
+        migrations = {
+            "fields": "ALTER TABLE audit_logs ADD COLUMN fields TEXT",
+            "font_size_check": "ALTER TABLE audit_logs ADD COLUMN font_size_check TEXT",
+            "compliance_score": "ALTER TABLE audit_logs ADD COLUMN compliance_score INTEGER",
+            "needs_manual_review": "ALTER TABLE audit_logs ADD COLUMN needs_manual_review TEXT",
+            "ai_analysis": "ALTER TABLE audit_logs ADD COLUMN ai_analysis TEXT",
+            "toxicity_analysis": "ALTER TABLE audit_logs ADD COLUMN toxicity_analysis TEXT",
+        }
+        for col, ddl in migrations.items():
+            if col not in existing:
+                conn.execute(ddl)
+    
+        conn.commit()
  
  
 def save_audit_log(
@@ -112,82 +111,77 @@ def save_audit_log(
     """Save one verification run to SQLite."""
  
     init_db()
-    conn = _get_conn()
- 
-    timestamp = datetime.now().isoformat()
- 
-    conn.execute(
-        """
-        INSERT INTO audit_logs (
-            timestamp,
-            scan_id,
-            filename,
-            status,
-            confidence,
-            violations,
-            warnings,
-            audit_trail,
-            fields,
-            font_size_check,
-            compliance_score,
-            needs_manual_review,
-            ai_analysis,
-            toxicity_analysis
+    with closing(_get_conn()) as conn:
+        timestamp = datetime.now().isoformat()
+     
+        conn.execute(
+            """
+            INSERT INTO audit_logs (
+                timestamp,
+                scan_id,
+                filename,
+                status,
+                confidence,
+                violations,
+                warnings,
+                audit_trail,
+                fields,
+                font_size_check,
+                compliance_score,
+                needs_manual_review,
+                ai_analysis,
+                toxicity_analysis
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                timestamp,
+                scan_id,
+                filename,
+                compliance_status,
+                confidence,
+                json.dumps(violations),
+                json.dumps(warnings),
+                json.dumps(audit_trail),
+                json.dumps(fields or {}),
+                json.dumps(font_size_check) if font_size_check else None,
+                compliance_score,
+                json.dumps(needs_manual_review or []),
+                json.dumps(ai_analysis) if ai_analysis else None,
+                json.dumps(toxicity_analysis) if toxicity_analysis else None,
+            )
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            timestamp,
-            scan_id,
-            filename,
-            compliance_status,
-            confidence,
-            json.dumps(violations),
-            json.dumps(warnings),
-            json.dumps(audit_trail),
-            json.dumps(fields or {}),
-            json.dumps(font_size_check) if font_size_check else None,
-            compliance_score,
-            json.dumps(needs_manual_review or []),
-            json.dumps(ai_analysis) if ai_analysis else None,
-            json.dumps(toxicity_analysis) if toxicity_analysis else None,
-        )
-    )
- 
-    conn.commit()
-    conn.close()
+     
+        conn.commit()
  
  
 def fetch_all_logs():
     """Get all saved audit logs, newest first."""
  
     init_db()
-    conn = _get_conn()
- 
-    rows = conn.execute(
-        """
-        SELECT
-            id,
-            timestamp,
-            scan_id,
-            filename,
-            status,
-            confidence,
-            violations,
-            warnings,
-            audit_trail,
-            fields,
-            font_size_check,
-            compliance_score,
-            needs_manual_review,
-            ai_analysis,
-            toxicity_analysis
-        FROM audit_logs
-        ORDER BY id DESC
-        """
-    ).fetchall()
- 
-    conn.close()
+    with closing(_get_conn()) as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                id,
+                timestamp,
+                scan_id,
+                filename,
+                status,
+                confidence,
+                violations,
+                warnings,
+                audit_trail,
+                fields,
+                font_size_check,
+                compliance_score,
+                needs_manual_review,
+                ai_analysis,
+                toxicity_analysis
+            FROM audit_logs
+            ORDER BY id DESC
+            """
+        ).fetchall()
  
     return [
         {
@@ -212,11 +206,53 @@ def fetch_all_logs():
  
  
 def fetch_log_by_scan_id(scan_id: str):
-    """Convenience lookup for the report renderer — get one record by scan_id."""
-    for log in fetch_all_logs():
-        if log["scan_id"] == scan_id:
-            return log
-    return None
+    """Get one record by scan_id (O(1) lookup)."""
+    init_db()
+    with closing(_get_conn()) as conn:
+        row = conn.execute(
+            """
+            SELECT
+                id,
+                timestamp,
+                scan_id,
+                filename,
+                status,
+                confidence,
+                violations,
+                warnings,
+                audit_trail,
+                fields,
+                font_size_check,
+                compliance_score,
+                needs_manual_review,
+                ai_analysis,
+                toxicity_analysis
+            FROM audit_logs
+            WHERE scan_id = ?
+            """,
+            (scan_id,)
+        ).fetchone()
+
+    if not row:
+        return None
+
+    return {
+        "id": row[0],
+        "timestamp": row[1],
+        "scan_id": row[2],
+        "filename": row[3],
+        "status": row[4],
+        "confidence": row[5],
+        "violations": json.loads(row[6]),
+        "warnings": json.loads(row[7]),
+        "audit_trail": json.loads(row[8]),
+        "fields": json.loads(row[9]) if row[9] else {},
+        "font_size_check": json.loads(row[10]) if row[10] else None,
+        "compliance_score": row[11],
+        "needs_manual_review": json.loads(row[12]) if row[12] else [],
+        "ai_analysis": json.loads(row[13]) if row[13] else None,
+        "toxicity_analysis": json.loads(row[14]) if row[14] else None,
+    }
  
  
 def create_report(audit):
@@ -275,35 +311,32 @@ def create_notice(
     fine_amount: float = None
 ):
     init_db()
-    conn = _get_conn()
     issued_at = datetime.now().isoformat()
-    
-    conn.execute(
-        """
-        INSERT INTO notices (
-            id, scan_id, product_name, manufacturer, issued_at, deadline, status, violations, fine_amount
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            notice_id,
-            scan_id,
-            product_name,
-            manufacturer,
-            issued_at,
-            deadline,
-            'ISSUED',
-            json.dumps(violations),
-            fine_amount
+    with closing(_get_conn()) as conn:
+        conn.execute(
+            """
+            INSERT INTO notices (
+                id, scan_id, product_name, manufacturer, issued_at, deadline, status, violations, fine_amount
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                notice_id,
+                scan_id,
+                product_name,
+                manufacturer,
+                issued_at,
+                deadline,
+                'ISSUED',
+                json.dumps(violations),
+                fine_amount
+            )
         )
-    )
-    conn.commit()
-    conn.close()
+        conn.commit()
 
 def fetch_notices():
     init_db()
-    conn = _get_conn()
-    rows = conn.execute("SELECT * FROM notices ORDER BY issued_at DESC").fetchall()
-    conn.close()
+    with closing(_get_conn()) as conn:
+        rows = conn.execute("SELECT * FROM notices ORDER BY issued_at DESC").fetchall()
     
     return [
         {
@@ -322,7 +355,6 @@ def fetch_notices():
 
 def update_notice_status(notice_id: str, status: str):
     init_db()
-    conn = _get_conn()
-    conn.execute("UPDATE notices SET status = ? WHERE id = ?", (status, notice_id))
-    conn.commit()
-    conn.close()
+    with closing(_get_conn()) as conn:
+        conn.execute("UPDATE notices SET status = ? WHERE id = ?", (status, notice_id))
+        conn.commit()

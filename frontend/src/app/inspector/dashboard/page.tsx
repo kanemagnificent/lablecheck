@@ -25,8 +25,8 @@ export default function InspectorDashboard() {
   // Real violation type breakdown from actual scan data
   const violationCounts: Record<string, number> = {};
   scans.forEach(s => {
-    s.violations?.forEach((v: any) => {
-      const label = v.field || v.rule || 'Other';
+    s.violations?.forEach((v) => {
+      const label = v.field || v.ruleCitation || 'Other';
       violationCounts[label] = (violationCounts[label] || 0) + 1;
     });
   });

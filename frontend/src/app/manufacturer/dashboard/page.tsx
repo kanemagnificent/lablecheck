@@ -26,12 +26,12 @@ export default function ManufacturerDashboard() {
     ...scans.slice(0, 3).map(s => ({
       text: `Label scanned: "${s.productName}" — ${s.status === 'COMPLIANT' ? 'Compliant' : s.status === 'NON_COMPLIANT' ? 'Non-Compliant' : 'Warning'}`,
       time: new Date(s.timestamp).toLocaleDateString(),
-      status: s.status === 'COMPLIANT' ? 'resolved' : s.status === 'NON_COMPLIANT' ? 'danger' : 'pending' as any,
+      status: (s.status === 'COMPLIANT' ? 'resolved' : s.status === 'NON_COMPLIANT' ? 'danger' : 'pending') as 'resolved' | 'danger' | 'pending',
     })),
     ...notices.slice(0, 2).map(n => ({
       text: `Notice ${n.status === 'RESOLVED' ? 'resolved' : 'issued'} for "${n.productName}"`,
       time: new Date(n.issuedAt).toLocaleDateString(),
-      status: n.status === 'RESOLVED' ? 'resolved' : 'danger' as any,
+      status: (n.status === 'RESOLVED' ? 'resolved' : 'danger') as 'resolved' | 'danger' | 'pending',
     }))
   ].slice(0, 5);
 

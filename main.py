@@ -25,7 +25,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins for development
+    allow_origins=["https://frontend-livid-sigma-65.vercel.app", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -124,6 +124,11 @@ async def scan_package(
                 toxicity_analysis=result.get("toxicity_analysis"),
             )
             
+        # Cleanup images
+        for p in image_paths:
+            if os.path.exists(p):
+                os.remove(p)
+
         return {
             "scan_id": scan_id,
             "filename": filenames_record,
@@ -136,11 +141,12 @@ async def scan_package(
             "toxicity_analysis": result.get("toxicity_analysis")
         }
     except Exception as e:
-        # Only cleanup if the AI extraction failed, otherwise keep for the frontend
+        # Cleanup images on error
         for p in image_paths:
             if os.path.exists(p):
                 os.remove(p)
-        raise e
+        print(f"[ERROR] {e}")
+        raise HTTPException(status_code=500, detail="Analysis failed. Please try again.")
 
 # --- Security & RBAC ---
 async def get_current_role(x_user_role: Optional[str] = Header(None, alias="X-User-Role")):
@@ -160,7 +166,7 @@ class RequireRole:
         return role
 # ------------------------
 
-@app.get("/logs/")
+@app.get("/logs/", dependencies=[Depends(RequireRole(["INSPECTOR", "MANUFACTURER"]))])
 async def get_logs():
     return fetch_all_logs()
 

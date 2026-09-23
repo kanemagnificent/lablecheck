@@ -57,7 +57,7 @@ export default function ChatBot() {
             product_name: latestScan.productName || '',
             status: latestScan.status || '',
             score: latestScan.score || 0,
-            violations: (latestScan.violations || []).map((v: any) => v.rule || v.label || String(v)),
+            violations: (latestScan.violations || []).map((v) => v.ruleCitation || v.field || String(v)),
             warnings: [],
           } : null,
           history: messages.slice(-6).map(m => ({ role: m.role, content: m.content }))
