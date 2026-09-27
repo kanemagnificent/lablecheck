@@ -152,54 +152,39 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </main>
 
       {/* Bottom Nav for Mobile */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 sm:hidden pb-safe z-50">
-        <div className="flex justify-around items-center h-16">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl border-t border-gray-200 dark:border-gray-800 sm:hidden pb-safe z-50 transition-colors duration-300">
+        <div className="flex justify-around items-center h-16 px-2">
           {role === 'USER' && (
             <>
-              <Link href="/" className={`flex flex-col items-center justify-center w-full h-full ${pathname === '/' || pathname === '/scan' ? 'text-gray-900' : 'text-gray-400'}`}>
-                <ScanLine className="w-5 h-5 mb-1" />
-                <span className="text-[10px] font-medium">{t('scanProduct')}</span>
-              </Link>
-              <Link href="/history" className={`flex flex-col items-center justify-center w-full h-full ${pathname === '/history' ? 'text-gray-900' : 'text-gray-400'}`}>
-                <History className="w-5 h-5 mb-1" />
-                <span className="text-[10px] font-medium">{t('history')}</span>
-              </Link>
+              <MobileNavLink href="/" active={pathname === '/' || pathname === '/scan'} icon={<ScanLine className="w-5 h-5 mb-1" />} label={t('scanProduct')} />
+              <MobileNavLink href="/history" active={pathname === '/history'} icon={<History className="w-5 h-5 mb-1" />} label={t('history')} />
             </>
           )}
           {role === 'MANUFACTURER' && (
             <>
-              <Link href="/scan" className={`flex flex-col items-center justify-center w-full h-full ${pathname === '/scan' ? 'text-gray-900' : 'text-gray-400'}`}>
-                <ScanLine className="w-5 h-5 mb-1" />
-                <span className="text-[10px] font-medium">{t('scanProduct')}</span>
-              </Link>
-              <Link href="/manufacturer/dashboard" className={`flex flex-col items-center justify-center w-full h-full ${pathname.includes('dashboard') ? 'text-gray-900' : 'text-gray-400'}`}>
-                <LayoutDashboard className="w-5 h-5 mb-1" />
-                <span className="text-[10px] font-medium">{t('dashboard')}</span>
-              </Link>
-              <Link href="/manufacturer/products" className={`flex flex-col items-center justify-center w-full h-full ${pathname.includes('products') ? 'text-gray-900' : 'text-gray-400'}`}>
-                <BookOpen className="w-5 h-5 mb-1" />
-                <span className="text-[10px] font-medium">{t('products')}</span>
-              </Link>
+              <MobileNavLink href="/scan" active={pathname === '/scan'} icon={<ScanLine className="w-5 h-5 mb-1" />} label={t('scanProduct')} />
+              <MobileNavLink href="/manufacturer/dashboard" active={pathname.includes('dashboard')} icon={<LayoutDashboard className="w-5 h-5 mb-1" />} label={t('dashboard')} />
+              <MobileNavLink href="/manufacturer/products" active={pathname.includes('products')} icon={<BookOpen className="w-5 h-5 mb-1" />} label={t('products')} />
             </>
           )}
           {role === 'INSPECTOR' && (
             <>
-              <Link href="/scan" className={`flex flex-col items-center justify-center w-full h-full ${pathname === '/scan' ? 'text-gray-900' : 'text-gray-400'}`}>
-                <ScanLine className="w-5 h-5 mb-1" />
-                <span className="text-[10px] font-medium">{t('scanProduct')}</span>
-              </Link>
-              <Link href="/inspector/dashboard" className={`flex flex-col items-center justify-center w-full h-full ${pathname.includes('dashboard') ? 'text-gray-900' : 'text-gray-400'}`}>
-                <LayoutDashboard className="w-5 h-5 mb-1" />
-                <span className="text-[10px] font-medium">{t('dashboard')}</span>
-              </Link>
-              <Link href="/inspector/queue" className={`flex flex-col items-center justify-center w-full h-full ${pathname.includes('queue') ? 'text-gray-900' : 'text-gray-400'}`}>
-                <Shield className="w-5 h-5 mb-1" />
-                <span className="text-[10px] font-medium">{t('queue')}</span>
-              </Link>
+              <MobileNavLink href="/scan" active={pathname === '/scan'} icon={<ScanLine className="w-5 h-5 mb-1" />} label={t('scanProduct')} />
+              <MobileNavLink href="/inspector/dashboard" active={pathname.includes('dashboard')} icon={<LayoutDashboard className="w-5 h-5 mb-1" />} label={t('dashboard')} />
+              <MobileNavLink href="/inspector/queue" active={pathname.includes('queue')} icon={<Shield className="w-5 h-5 mb-1" />} label={t('queue')} />
             </>
           )}
         </div>
       </nav>
     </div>
+  );
+}
+
+function MobileNavLink({ href, active, icon, label }: { href: string; active: boolean; icon: ReactNode; label: string }) {
+  return (
+    <Link href={href} className={`relative flex flex-col items-center justify-center w-full h-full active:scale-95 transition-all duration-200 ${active ? 'text-gray-900 dark:text-white font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium'}`}>
+      {icon}
+      <span className="text-[10px]">{label}</span>
+    </Link>
   );
 }
