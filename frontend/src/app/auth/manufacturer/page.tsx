@@ -15,7 +15,7 @@ export default function ManufacturerAuth() {
   const [password, setPassword] = useState("password123");
   const [errorMsg, setErrorMsg] = useState("");
 
-  const handleSimulatedLogin = (e?: React.FormEvent) => {
+  const handleSimulatedLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
     if (!email || !email.includes('@')) {
@@ -29,10 +29,16 @@ export default function ManufacturerAuth() {
     
     setErrorMsg("");
     setIsLoading(true);
-    setTimeout(() => {
-      login('MANUFACTURER');
+    
+    try {
+      const { loginApi } = await import('../../../lib/api');
+      const data = await loginApi(email, password);
+      login(data.role, data.access_token);
       router.push('/manufacturer/dashboard');
-    }, 1500);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to authenticate.");
+      setIsLoading(false);
+    }
   };
 
   return (

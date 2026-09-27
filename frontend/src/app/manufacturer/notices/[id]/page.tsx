@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, Clock, Upload, AlertTriangle, Info, FileImage } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { updateNoticeStatus as updateNoticeStatusApi } from '../../../../lib/api';
+import toast from 'react-hot-toast';
 
 export default function ManufacturerNoticeDetail() {
   const { id } = useParams();
@@ -48,8 +49,10 @@ export default function ManufacturerNoticeDetail() {
     try {
       await updateNoticeStatusApi(notice!.id, 'SUBMITTED');
       updateNoticeStatus(notice!.id, 'SUBMITTED'); // Update local store
+      toast.success("Corrective action submitted");
+      router.push('/manufacturer/dashboard');
     } catch (error) {
-      alert("Failed to submit correction");
+      toast.error("Failed to submit correction");
     } finally {
       setIsSubmitting(false);
     }

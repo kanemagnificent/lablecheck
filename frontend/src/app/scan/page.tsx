@@ -8,6 +8,7 @@ import Webcam from 'react-webcam';
 import { uploadScan, dataURLtoFile } from '../../lib/api';
 import { useAppStore } from '../../context/store';
 import { adaptBackendScan } from '../../mock/data';
+import toast from 'react-hot-toast';
 
 type InputMode = 'CAMERA' | 'UPLOAD';
 type ScanStage = 'IDLE' | 'READING' | 'EXTRACTING' | 'CHECKING' | 'SCORING' | 'COMPLETE';
@@ -65,7 +66,7 @@ export default function ScanPage() {
 
   const simulateProcessing = async () => {
     if (isOffline) {
-      alert("Scan queued for sync.");
+      toast.success("Scan queued for offline sync.");
       router.push('/history');
       return;
     }
@@ -171,7 +172,7 @@ export default function ScanPage() {
                 </div>
                 <button 
                   onClick={capture}
-                  className="absolute bottom-6 left-1/2 -translate-x-1/2 w-16 h-16 bg-white rounded-full border-4 border-gray-300 flex items-center justify-center hover:bg-gray-100 transition-colors focus:ring-4 focus:ring-green-500 outline-none"
+                  className="absolute bottom-6 left-1/2 -translate-x-1/2 w-16 h-16 bg-white rounded-full border-4 border-gray-300 flex items-center justify-center hover:bg-gray-100 transition-all duration-200 active:scale-90 active:bg-gray-200 focus:ring-4 focus:ring-green-500 outline-none"
                   aria-label="Take photo"
                 >
                   <div className="w-12 h-12 border-2 border-black rounded-full" />
@@ -203,7 +204,7 @@ export default function ScanPage() {
                 <FileImage className="w-12 h-12 text-gray-400 mb-4" />
                 <p className="text-gray-900 font-medium mb-1">Upload {frontImage ? "Back" : "Front"} Panel</p>
                 <p className="text-sm text-gray-500 mb-6 text-center">Drag and drop or click to browse</p>
-                <label className="bg-white border border-gray-300 text-gray-900 px-4 py-2 rounded-md font-medium cursor-pointer hover:bg-gray-50 focus-within:ring-2 focus-within:ring-black">
+                <label className="bg-white border border-gray-300 text-gray-900 px-4 py-2 rounded-md font-medium cursor-pointer hover:bg-gray-50 hover:shadow-sm transition-all active:scale-95 focus-within:ring-2 focus-within:ring-black">
                   Browse Files
                   <input type="file" accept="image/*" className="sr-only" onChange={handleFileUpload} />
                 </label>
@@ -235,14 +236,14 @@ export default function ScanPage() {
             {!backImage && (
               <button 
                 onClick={() => setIsCapturingBack(true)}
-                className="flex-1 bg-white border border-gray-300 text-gray-900 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                className="flex-1 bg-white border border-gray-300 text-gray-900 py-3 rounded-lg font-medium hover:bg-gray-50 transition-all active:scale-[0.98]"
               >
                 Add Back Panel
               </button>
             )}
             <button 
               onClick={reset}
-              className="flex-1 bg-white border border-gray-300 text-red-600 py-3 rounded-lg font-medium hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+              className="flex-1 bg-white border border-gray-300 text-red-600 py-3 rounded-lg font-medium hover:bg-red-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
             >
               <X className="w-4 h-4" /> Retake
             </button>

@@ -8,3 +8,9 @@ pytesseract
 python-multipart
 groq
 slowapi
+fpdf2
+PyJWT
+passlib
+bcrypt
+cloudinary
+psycopg2-binary

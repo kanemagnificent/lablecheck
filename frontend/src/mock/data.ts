@@ -146,7 +146,9 @@ export function adaptBackendScan(backendData: any): ScanResult {
   }
   
   const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  const imageUrl = filename ? `${apiBase}/uploads/${filename}` : '/mock/biscuits.jpg';
+  const imageUrl = filename.startsWith('http') 
+    ? filename 
+    : (filename ? `${apiBase}/uploads/${filename}` : '/mock/biscuits.jpg');
 
   return {
     id: backendData.scan_id || backendData.id || String(Date.now()),

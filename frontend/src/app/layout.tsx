@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import AppShell from "../components/AppShell";
 import ChatBot from "../components/ChatBot";
+import { Toaster } from 'react-hot-toast';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,6 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} antialiased text-gray-900 bg-white selection:bg-gray-200 selection:text-gray-900`}>
+        <Toaster position="bottom-center" toastOptions={{ style: { background: '#111827', color: '#fff', borderRadius: '8px' } }} />
         <AppShell>
           {children}
         </AppShell>

@@ -53,22 +53,34 @@ export default function HistoryPage() {
               className="pl-9 pr-4 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-black outline-none w-full sm:w-64 text-sm"
             />
           </div>
-          <select 
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as Status | 'ALL')}
-            className="border border-gray-300 rounded-md bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-black outline-none"
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="COMPLIANT">Compliant</option>
-            <option value="WARNING">Warnings</option>
-            <option value="NON_COMPLIANT">Non-Compliant</option>
-          </select>
+          <div className="flex bg-gray-100 p-1 rounded-lg w-full sm:w-auto overflow-x-auto no-scrollbar">
+            {['ALL', 'COMPLIANT', 'WARNING', 'NON_COMPLIANT'].map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status as Status | 'ALL')}
+                className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${
+                  statusFilter === status 
+                    ? 'bg-white text-gray-900 shadow-sm' 
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200/50'
+                }`}
+              >
+                {status === 'ALL' ? 'All' : status.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center h-48">
-          <div className="w-8 h-8 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="h-[250px] bg-white border border-gray-100 rounded-xl p-4 flex flex-col gap-4 animate-pulse">
+              <div className="h-32 bg-gray-100 rounded-lg w-full"></div>
+              <div className="h-4 bg-gray-100 rounded w-1/3"></div>
+              <div className="h-6 bg-gray-100 rounded w-3/4"></div>
+              <div className="h-4 bg-gray-100 rounded w-1/2 mt-auto"></div>
+            </div>
+          ))}
         </div>
       ) : filteredScans.length === 0 ? (
         <div className="bg-gray-50 border border-gray-200 rounded-xl p-12 text-center flex flex-col items-center">
@@ -96,11 +108,11 @@ export default function HistoryPage() {
             >
               <Link 
                 href={`/results/${scan.id}`}
-                className="group flex flex-col h-full bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-all hover:border-gray-300"
+                className="group flex flex-col h-full bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-all duration-300 hover:border-gray-300 active:scale-[0.98]"
               >
-                <div className="h-32 bg-gray-100 relative">
+                <div className="h-32 bg-gray-50 relative p-4 flex items-center justify-center border-b border-gray-100">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={scan.imageFront} alt={scan.productName} className="w-full h-full object-cover mix-blend-multiply opacity-50 group-hover:opacity-100 transition-opacity" />
+                  <img src={scan.imageFront} alt={scan.productName} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute top-2 right-2 flex gap-1">
                     <StatusBadge status={scan.status} />
                   </div>

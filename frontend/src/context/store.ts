@@ -5,8 +5,10 @@ import { Role, ScanResult, Notice, Locale } from '../mock/data';
 interface AppState {
   role: Role;
   setRole: (role: Role) => void;
+  token: string | null;
+  setToken: (token: string | null) => void;
   isAuthenticated: boolean;
-  login: (role: Role) => void;
+  login: (role: Role, token: string) => void;
   logout: () => void;
   isInitialized: boolean;
   setInitialized: (val: boolean) => void;
@@ -27,9 +29,12 @@ export const useAppStore = create<AppState>()(
       role: 'USER',
       setRole: (role) => set({ role }),
       
+      token: null,
+      setToken: (token) => set({ token }),
+      
       isAuthenticated: false,
-      login: (role) => set({ isAuthenticated: true, role }),
-      logout: () => set({ isAuthenticated: false, role: 'USER' }),
+      login: (role, token) => set({ isAuthenticated: true, role, token }),
+      logout: () => set({ isAuthenticated: false, role: 'USER', token: null }),
       
       locale: 'en',
       setLocale: (locale) => set({ locale }),

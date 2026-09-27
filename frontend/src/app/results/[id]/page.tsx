@@ -3,9 +3,10 @@
 import { useAppStore } from '../../../context/store';
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useMemo } from 'react';
-import { ShieldAlert, Info, ArrowLeft, Download, FileText, CheckCircle, AlertCircle, AlertTriangle, X, Send } from 'lucide-react';
+import { ShieldAlert, Info, ArrowLeft, Download, FileText, CheckCircle, AlertCircle, AlertTriangle, X, Send, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { issueNotice } from '../../../lib/api';
+import { issueNotice, getIngredientAlternatives } from '../../../lib/api';
+import toast from 'react-hot-toast';
 
 export default function ResultsPage() {
   const { id } = useParams();
@@ -15,8 +16,29 @@ export default function ResultsPage() {
   const scan = scans.find(s => s.id === id);
   const [expandedViolation, setExpandedViolation] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImageExpanded, setIsImageExpanded] = useState(false);
   const [noticeSent, setNoticeSent] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [loadingAlternativesFor, setLoadingAlternativesFor] = useState<string | null>(null);
+  const [alternatives, setAlternatives] = useState<Record<string, {name: string, reason: string}[]>>({});
+  
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportText, setReportText] = useState("");
+  const [reportSent, setReportSent] = useState(false);
+  const [isSendingReport, setIsSendingReport] = useState(false);
+
+  const handleFetchAlternatives = async (ingredient: string) => {
+    if (alternatives[ingredient]) return; // already fetched
+    setLoadingAlternativesFor(ingredient);
+    try {
+      const data = await getIngredientAlternatives(ingredient);
+      setAlternatives(prev => ({ ...prev, [ingredient]: data.alternatives }));
+    } catch (error) {
+      console.error("Failed to fetch alternatives", error);
+    } finally {
+      setLoadingAlternativesFor(null);
+    }
+  };
 
   const handleIssueNotice = async () => {
     if (!scan) return;
@@ -39,12 +61,66 @@ export default function ResultsPage() {
         status: 'ISSUED',
         violations: scan.violations
       });
-      setNoticeSent(true);
+
+      // Construct Official Notice Email
+      const manufacturerEmail = `compliance@${scan.manufacturer.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`;
+      const subject = encodeURIComponent(`URGENT: Legal Metrology Notice of Non-Compliance - ${scan.productName}`);
+      let body = `To the Compliance Officer, ${scan.manufacturer},\n\n`;
+      body += `This is an official notice from the Department of Legal Metrology.\n\n`;
+      body += `During a recent inspection, the following product was found to be in violation of the Legal Metrology (Packaged Commodities) Rules, 2011:\n`;
+      body += `Product: ${scan.productName}\n\n`;
+      body += `VIOLATIONS:\n`;
+      scan.violations.forEach(v => {
+        body += `- ${v.field.replace('_', ' ')} (Rule: ${v.ruleCitation})\n`;
+      });
+      body += `\nYou are required to rectify these issues within 14 days. Failure to comply will result in further enforcement action and compounding fees.\n`;
+      body += `\n*** INSPECTOR INSTRUCTIONS: PLEASE ATTACH THE DOWNLOADED PDF REPORT TO THIS EMAIL BEFORE SENDING ***\n\n`;
+      body += `Sincerely,\nInspector of Legal Metrology`;
+
+      const mailtoLink = `mailto:${manufacturerEmail}?subject=${subject}&body=${encodeURIComponent(body)}`;
+
+      // Trigger the native email client
+      setTimeout(() => {
+        window.location.href = mailtoLink;
+        setNoticeSent(true);
+      }, 800);
+
     } catch (error) {
-      alert("Failed to issue notice");
+      toast.error("Failed to issue notice");
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleSubmitReport = async () => {
+    if (!scan) return;
+    setIsSendingReport(true);
+    
+    // Construct a highly detailed, professional email body
+    const subject = encodeURIComponent(`Legal Metrology Violation Report: ${scan.productName}`);
+    let body = `Dear Inspector,\n\nI am reporting a potential Legal Metrology (Packaged Commodities) violation for the following product:\n\n`;
+    body += `Product Name: ${scan.productName}\n`;
+    body += `Manufacturer: ${scan.manufacturer}\n\n`;
+    
+    body += `DETECTED VIOLATIONS (AI Analysis):\n`;
+    scan.violations.forEach(v => {
+      body += `- ${v.field.replace('_', ' ')} (Rule: ${v.ruleCitation})\n`;
+    });
+    
+    if (reportText.trim()) {
+      body += `\nADDITIONAL CONSUMER FIELD NOTES:\n${reportText}\n`;
+    }
+    
+    body += `\nPlease investigate this matter.\n\nThank you.`;
+    
+    const mailtoLink = `mailto:inspector.mh@gov.in?subject=${subject}&body=${encodeURIComponent(body)}`;
+    
+    // Trigger the native email client
+    setTimeout(() => {
+      window.location.href = mailtoLink;
+      setIsSendingReport(false);
+      setReportSent(true);
+    }, 800);
   };
 
   // Count severities (Must be before early return)
@@ -84,7 +160,10 @@ export default function ResultsPage() {
       </div>
 
       {/* Header / Score */}
-      <div className="flex flex-col md:flex-row gap-8 bg-white p-8 rounded-2xl border border-gray-200 mb-8 shadow-sm">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+        className="flex flex-col md:flex-row gap-8 bg-white p-8 rounded-2xl border border-gray-200 mb-8 shadow-sm"
+      >
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
             <span className="font-mono text-xs font-semibold bg-gray-100 text-gray-700 px-2 py-1 rounded tracking-wide">{scan.category}</span>
@@ -94,7 +173,7 @@ export default function ResultsPage() {
           <p className="text-gray-500 font-medium">{scan.manufacturer}</p>
         </div>
         
-        <div className="flex flex-col md:items-end justify-center">
+        <div className="flex flex-row md:flex-col items-center justify-between md:justify-center gap-4">
           <div className="flex items-center gap-3">
             <div className={`w-3 h-3 rounded-full ${
               scan.status === 'COMPLIANT' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' :
@@ -105,11 +184,20 @@ export default function ResultsPage() {
               {scan.status.replace('_', ' ')}
             </span>
           </div>
-          <span className="text-sm text-gray-500 mt-1 font-medium">Compliance Score: {scan.score}/100</span>
+          <div className="flex items-center gap-3">
+            <ScoreRing score={scan.score} status={scan.status} />
+            <div className="flex flex-col">
+              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Compliance</span>
+              <span className="text-sm font-semibold text-gray-700">Score</span>
+            </div>
+          </div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}
+        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+      >
         {/* Main Details (Left 2/3) */}
         <div className="md:col-span-2 space-y-6">
           
@@ -176,7 +264,7 @@ export default function ResultsPage() {
               <h3 className="font-bold mb-2 flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-red-600" /> Report this product</h3>
               <p className="text-sm text-red-700 mb-4">This product appears to violate mandatory packaging rules. You can flag this directly to the Legal Metrology department.</p>
               <button 
-                onClick={() => alert('Product flagged to Inspector Queue!')}
+                onClick={() => setIsReportModalOpen(true)}
                 className="bg-red-600 text-white px-4 py-2 rounded-md font-medium text-sm hover:bg-red-700 w-full sm:w-auto text-center transition-colors shadow-sm"
               >
                 Report to Enforcement
@@ -205,10 +293,18 @@ export default function ResultsPage() {
           {/* Annotated Label Image */}
           <div className="bg-white p-4 rounded-xl border border-gray-200">
              <h3 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wider">Analyzed Label</h3>
-             <div className="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-100 aspect-square flex items-center justify-center group">
+             <button 
+               onClick={() => setIsImageExpanded(true)}
+               className="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-100 aspect-square flex items-center justify-center group w-full cursor-pointer outline-none focus:ring-2 focus:ring-gray-900"
+             >
                {/* eslint-disable-next-line @next/next/no-img-element */}
-               <img src={scan.imageFront} alt="Product label" className="w-full h-full object-cover" />
-             </div>
+               <img src={scan.imageFront} alt="Product label" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
+                 <span className="opacity-0 group-hover:opacity-100 bg-white/95 text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm transition-opacity duration-300 transform translate-y-2 group-hover:translate-y-0">
+                   Click to Enlarge
+                 </span>
+               </div>
+             </button>
           </div>
 
           {/* Toxicity Health-Risk */}
@@ -239,14 +335,51 @@ export default function ResultsPage() {
                   )}
                   <div className="space-y-3">
                     {scan.toxicityFlags.map((flag, i) => (
-                    <div key={i} className="flex flex-col gap-1">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-gray-900 text-sm">{flag.ingredient}</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                          flag.level === 'HIGH' ? 'bg-[#991b1b] text-white' : 'bg-[#f59e0b] text-white'
-                        }`}>{flag.level} RISK</span>
+                    <div key={i} className="flex flex-col gap-2 pb-3 border-b border-gray-100 last:border-0 last:pb-0">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-gray-900 text-sm">{flag.ingredient}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                            flag.level === 'HIGH' ? 'bg-[#991b1b] text-white' : 'bg-[#f59e0b] text-white'
+                          }`}>{flag.level} RISK</span>
+                        </div>
+                        <p className="text-xs text-gray-600">{flag.reason}</p>
                       </div>
-                      <p className="text-xs text-gray-600">{flag.reason}</p>
+                      
+                      {role === 'MANUFACTURER' && (
+                        <div>
+                          {!alternatives[flag.ingredient] ? (
+                            <button 
+                              onClick={() => handleFetchAlternatives(flag.ingredient)}
+                              disabled={loadingAlternativesFor === flag.ingredient}
+                              className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-md"
+                            >
+                              {loadingAlternativesFor === flag.ingredient ? (
+                                <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"/>
+                              ) : (
+                                <Sparkles className="w-3 h-3" />
+                              )}
+                              Suggest Alternatives
+                            </button>
+                          ) : (
+                            <motion.div 
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              className="bg-gray-50 border border-gray-200 rounded-md p-3 mt-1"
+                            >
+                              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1"><Sparkles className="w-3 h-3 text-blue-500"/> AI Alternatives</p>
+                              <ul className="space-y-2">
+                                {alternatives[flag.ingredient].map((alt, idx) => (
+                                  <li key={idx} className="text-xs">
+                                    <span className="font-semibold text-gray-900 block">{alt.name}</span>
+                                    <span className="text-gray-500">{alt.reason}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </motion.div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                   </div>
@@ -275,7 +408,7 @@ export default function ResultsPage() {
           </div>
 
         </div>
-      </div>
+      </motion.div>
 
       {/* Enforcement Modal (Inspector Only) */}
       <AnimatePresence>
@@ -360,6 +493,125 @@ export default function ResultsPage() {
         )}
       </AnimatePresence>
 
+      {/* Consumer Report Modal */}
+      <AnimatePresence>
+        {isReportModalOpen && (
+          <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl border border-gray-100"
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-1">File Field Report</h2>
+                  <p className="text-sm text-gray-500 font-medium">Product: {scan.productName}</p>
+                </div>
+                <button 
+                  onClick={() => { setIsReportModalOpen(false); setReportSent(false); setReportText(""); }} 
+                  className="text-gray-400 hover:text-gray-700 bg-gray-50 p-2 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {!reportSent ? (
+                <>
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Additional Details</label>
+                    <textarea 
+                      value={reportText}
+                      onChange={(e) => setReportText(e.target.value)}
+                      placeholder="Describe where you found this product (e.g. Store name, location), batch number, or any other relevant details..."
+                      className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none resize-none h-32 bg-gray-50"
+                    />
+                    <p className="text-xs text-gray-500 mt-2">This report, along with the AI analysis and label images, will be securely emailed to the Legal Metrology Enforcement Division.</p>
+                  </div>
+                  <button 
+                    onClick={handleSubmitReport}
+                    disabled={isSendingReport || reportText.trim() === ""}
+                    className="w-full bg-red-600 text-white font-medium px-4 py-3 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isSendingReport ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                    Submit Report & Send Email
+                  </button>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-100">
+                    <CheckCircle className="w-8 h-8 text-green-500" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Report Submitted</h3>
+                  <p className="text-gray-500 mb-6">Your field report and evidence have been successfully emailed to the enforcement inspector.</p>
+                  <button 
+                    onClick={() => { setIsReportModalOpen(false); setReportSent(false); setReportText(""); }}
+                    className="bg-gray-100 text-gray-900 font-medium px-6 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Image Zoom Modal */}
+      <AnimatePresence>
+        {isImageExpanded && (
+          <div className="fixed inset-0 bg-gray-900/90 backdrop-blur-md flex items-center justify-center p-4 z-[60]" onClick={() => setIsImageExpanded(false)}>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative max-w-4xl w-full max-h-[90vh] flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              <button 
+                onClick={() => setIsImageExpanded(false)} 
+                className="absolute -top-12 right-0 text-white hover:text-gray-300 bg-white/10 p-2 rounded-full transition-colors focus:outline-none"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={scan.imageFront} alt="Expanded Product label" className="w-full h-full object-contain rounded-lg shadow-2xl" />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+    </div>
+  );
+}
+
+// Helper component for Score Ring
+function ScoreRing({ score, status }: { score: number, status: string }) {
+  const radius = 24;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (score / 100) * circumference;
+  
+  const color = status === 'COMPLIANT' ? 'text-green-500' : status === 'WARNING' ? 'text-amber-500' : 'text-red-500';
+  
+  return (
+    <div className="relative flex items-center justify-center w-16 h-16">
+      <svg className="transform -rotate-90 w-16 h-16">
+        <circle cx="32" cy="32" r="24" stroke="currentColor" strokeWidth="3" fill="transparent" className="text-gray-100" />
+        <motion.circle 
+          cx="32" cy="32" r="24" stroke="currentColor" strokeWidth="4" fill="transparent"
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset }}
+          transition={{ duration: 1.5, ease: "easeOut", delay: 0.3 }}
+          className={color}
+          strokeLinecap="round"
+        />
+      </svg>
+      <span className="absolute text-sm font-bold text-gray-900">{score}</span>
     </div>
   );
 }

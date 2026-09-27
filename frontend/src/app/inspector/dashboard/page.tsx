@@ -6,6 +6,7 @@ import { ShieldAlert, AlertTriangle, CheckCircle, BarChart3, Map as MapIcon, Inb
 import Link from 'next/link';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { ComposableMap, Geographies, Geography, Marker } from 'react-simple-maps';
+import { motion } from 'framer-motion';
 
 const geoUrl = "https://raw.githubusercontent.com/deldersveld/topojson/master/countries/india/india-districts.json"; // Public topojson for India
 
@@ -49,10 +50,16 @@ export default function InspectorDashboard() {
 
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KPICard title="Total Audited" value={totalAudited.toString()} subtext="All scans" />
-        <KPICard title="Critical Violations" value={criticalViolations.toString()} subtext={`${totalAudited > 0 ? Math.round((criticalViolations/totalAudited)*100) : 0}% of total`} alert={criticalViolations > 0} />
-        <KPICard title="Notices Issued" value={noticesIssued.toString()} subtext={`${resolvedNotices} resolved`} />
-        <KPICard title="Compliance Rate" value={totalAudited > 0 ? `${Math.round(((totalAudited - criticalViolations) / totalAudited) * 100)}%` : 'N/A'} subtext="Based on scans" />
+        {[
+          { title: "Total Audited", value: totalAudited.toString(), subtext: "All scans" },
+          { title: "Critical Violations", value: criticalViolations.toString(), subtext: `${totalAudited > 0 ? Math.round((criticalViolations/totalAudited)*100) : 0}% of total`, alert: criticalViolations > 0 },
+          { title: "Notices Issued", value: noticesIssued.toString(), subtext: `${resolvedNotices} resolved` },
+          { title: "Compliance Rate", value: totalAudited > 0 ? `${Math.round(((totalAudited - criticalViolations) / totalAudited) * 100)}%` : 'N/A', subtext: "Based on scans" }
+        ].map((kpi, i) => (
+          <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1, duration: 0.5 }}>
+            <KPICard {...kpi} />
+          </motion.div>
+        ))}
       </div>
 
       {/* Dense Data Section */}
@@ -85,7 +92,11 @@ export default function InspectorDashboard() {
                   <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f3f4f6" />
                   <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
                   <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#111827', fontWeight: 600 }} width={120} />
-                  <Tooltip cursor={{fill: '#f9fafb'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                  <Tooltip 
+                    cursor={{fill: '#f9fafb'}} 
+                    contentStyle={{borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)', boxShadow: '0 8px 30px rgba(0,0,0,0.12)', backgroundColor: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(8px)'}} 
+                    itemStyle={{fontWeight: 'bold', color: '#111827'}}
+                  />
                   <Bar dataKey="count" radius={[0, 4, 4, 0]}>
                     {violationTypes.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={index === 0 ? '#ef4444' : '#111827'} />
@@ -130,9 +141,10 @@ export default function InspectorDashboard() {
 
             <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-6">Flagged by Users</div>
             {userFlags.slice(0,4).map(s => (
-               <Link href={`/results/${s.id}`} key={s.id} className="block bg-gray-50 border border-gray-200 p-3 rounded-lg hover:bg-gray-100 transition-colors">
+               <Link href={`/results/${s.id}`} key={s.id} className="block bg-gray-50 border border-gray-200 p-3 rounded-lg hover:bg-gray-100 transition-colors relative">
+                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse border-2 border-white shadow-sm" />
                  <div className="flex justify-between items-start mb-1">
-                   <span className="text-sm font-bold text-gray-900">{s.productName}</span>
+                   <span className="text-sm font-bold text-gray-900 pr-2">{s.productName}</span>
                    <span className="text-[10px] font-bold bg-red-100 text-red-800 px-1.5 py-0.5 rounded">FLAGGED</span>
                  </div>
                  <p className="text-xs text-gray-500 font-mono">Score: {s.score}/100</p>

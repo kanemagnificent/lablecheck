@@ -5,3 +5,7 @@ venv/
 env/
 uploads/
 legal_metrology.db
+data/audit.db
+test_label.jpg
+.DS_Store
+sent_emails/

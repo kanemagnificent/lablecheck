@@ -3,13 +3,17 @@ import { useAppStore } from '../context/store';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const TIMEOUT_MS = 90000; // 90 seconds to account for EasyOCR model loading
 
-// Helper to get headers with RBAC
+// Helper to get headers with RBAC and JWT
 const getHeaders = (extraHeaders: Record<string, string> = {}) => {
-  const role = useAppStore.getState().role;
-  return {
+  const { role, token } = useAppStore.getState();
+  const headers: Record<string, string> = {
     'X-User-Role': role,
     ...extraHeaders
   };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
 };
 
 export async function uploadScan(
@@ -113,6 +117,16 @@ export async function updateNoticeStatus(noticeId: string, status: string) {
 }
 
 // Utility to convert base64 data URL to a File object
+export async function getIngredientAlternatives(ingredient: string) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/ingredients/alternatives?ingredient=${encodeURIComponent(ingredient)}`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch alternatives');
+  }
+  return response.json();
+}
+
 export function dataURLtoFile(dataurl: string, filename: string): File {
   const arr = dataurl.split(',');
   const mimeMatch = arr[0].match(/:(.*?);/);
@@ -124,4 +138,17 @@ export function dataURLtoFile(dataurl: string, filename: string): File {
     u8arr[n] = bstr.charCodeAt(n);
   }
   return new File([u8arr], filename, { type: mime });
+}
+
+export async function loginApi(email: string, password: string) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || 'Login failed');
+  }
+  return response.json();
 }

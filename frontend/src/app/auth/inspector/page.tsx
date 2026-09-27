@@ -14,7 +14,7 @@ export default function InspectorAuth() {
   const [password, setPassword] = useState("securepassword");
   const [errorMsg, setErrorMsg] = useState("");
 
-  const handleSimulatedLogin = (e?: React.FormEvent) => {
+  const handleSimulatedLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
     if (!email || !email.includes('@gov.in')) {
@@ -28,10 +28,16 @@ export default function InspectorAuth() {
     
     setErrorMsg("");
     setIsLoading(true);
-    setTimeout(() => {
-      login('INSPECTOR');
+    
+    try {
+      const { loginApi } = await import('../../../lib/api');
+      const data = await loginApi(email, password);
+      login(data.role, data.access_token);
       router.push('/inspector/dashboard');
-    }, 1500);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to authenticate.");
+      setIsLoading(false);
+    }
   };
 
   return (

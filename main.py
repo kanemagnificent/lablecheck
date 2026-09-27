@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 
 from unified_compliance_engine import HybridOCREngine, run_full_check_from_ocr_result
-from database import save_audit_log, fetch_all_logs, fetch_log_by_scan_id, create_notice, fetch_notices, update_notice_status
+from database import save_audit_log, fetch_all_logs, fetch_log_by_scan_id, create_notice, fetch_notices, update_notice_status, get_user_by_email, create_user
 from report_renderer import render_pdf_report
 
 app = FastAPI(
@@ -104,10 +104,34 @@ async def scan_package(
             enable_ai_synthesis=enable_ai,
         )
         
-        # Save to DB if quality is decent
-        filenames_record = ", ".join([os.path.basename(p) for p in image_paths])
+        # Cloudinary integration (Hybrid Storage Architecture)
+        final_image_urls = []
+        cloudinary_url = os.environ.get("CLOUDINARY_URL")
+        
+        if cloudinary_url:
+            import cloudinary
+            import cloudinary.uploader
+            for p in image_paths:
+                try:
+                    res = cloudinary.uploader.upload(p)
+                    final_image_urls.append(res["secure_url"])
+                except Exception as e:
+                    print(f"[ERROR] Cloudinary upload failed: {e}")
+                    
+        # Fallback to local if cloud storage is not configured or fails
+        if not final_image_urls:
+            final_image_urls = [os.path.basename(p) for p in image_paths]
+            # Leave files in local UPLOAD_DIR for frontend to serve
+        else:
+            # Cleanup local temp files if cloud upload succeeded
+            for p in image_paths:
+                if os.path.exists(p):
+                    os.remove(p)
+                    
+        filenames_record = ", ".join(final_image_urls)
+        
         if result["compliance_status"] != "RESCAN NEEDED":
-            # Save the new UUID file names to the DB so the frontend can load them from /uploads/
+            # Save the new URLs or filenames to the DB
             save_audit_log(
                 scan_id=scan_id,
                 filename=filenames_record,
@@ -124,11 +148,6 @@ async def scan_package(
                 toxicity_analysis=result.get("toxicity_analysis"),
             )
             
-        # Cleanup images
-        for p in image_paths:
-            if os.path.exists(p):
-                os.remove(p)
-
         return {
             "scan_id": scan_id,
             "filename": filenames_record,
@@ -149,37 +168,106 @@ async def scan_package(
         raise HTTPException(status_code=500, detail="Analysis failed. Please try again.")
 
 # --- Security & RBAC ---
-async def get_current_role(x_user_role: Optional[str] = Header(None, alias="X-User-Role")):
-    # Default to USER if no header is provided (for public endpoints)
-    return x_user_role or "USER"
+import jwt
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from passlib.context import CryptContext
+from pydantic import BaseModel
+import time
+import os
+
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "super-secret-key-change-in-prod")
+ALGORITHM = "HS256"
+
+security = HTTPBearer(auto_error=False)
+
+async def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)):
+    if not credentials:
+        return {"role": "USER", "email": None} # Default to USER for public endpoints
+    try:
+        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        role = payload.get("role")
+        email = payload.get("sub")
+        company = payload.get("company")
+        if not role:
+            return {"role": "USER", "email": None, "company": None}
+        return {"role": role, "email": email, "company": company}
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 class RequireRole:
     def __init__(self, allowed_roles: List[str]):
         self.allowed_roles = allowed_roles
 
-    def __call__(self, role: str = Depends(get_current_role)):
-        if role not in self.allowed_roles:
+    def __call__(self, user: dict = Depends(get_current_user)):
+        if user["role"] not in self.allowed_roles:
             raise HTTPException(
                 status_code=403, 
-                detail=f"Forbidden: You do not have the required permissions. Role '{role}' is not in {self.allowed_roles}"
+                detail=f"Forbidden: You do not have the required permissions. Role '{user['role']}' is not in {self.allowed_roles}"
             )
-        return role
+        return user
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+@app.on_event("startup")
+def startup_event():
+    # Seed default users if they don't exist yet
+    create_user("inspector.mh@gov.in", pwd_context.hash("securepassword"), "INSPECTOR")
+    create_user("compliance@acmecorp.com", pwd_context.hash("securepassword"), "MANUFACTURER", "Acme Corp")
+    create_user("compliance@nestle.com", pwd_context.hash("securepassword"), "MANUFACTURER", "Nestle")
+
+@app.post("/api/v1/auth/login")
+async def login(req: LoginRequest):
+    user = get_user_by_email(req.email)
+    
+    if not user or not pwd_context.verify(req.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+    token = jwt.encode(
+        {"sub": user["email"], "role": user["role"], "company": user["company_name"], "exp": time.time() + 86400}, 
+        SECRET_KEY, 
+        algorithm=ALGORITHM
+    )
+    return {"access_token": token, "role": user["role"]}
 # ------------------------
 
-@app.get("/logs/", dependencies=[Depends(RequireRole(["INSPECTOR", "MANUFACTURER"]))])
-async def get_logs():
-    return fetch_all_logs()
+@app.get("/logs/")
+async def get_logs(user: dict = Depends(RequireRole(["INSPECTOR", "MANUFACTURER"]))):
+    logs = fetch_all_logs()
+    
+    # Data Isolation (Multi-Tenancy): Manufacturers only see their own logs
+    if user["role"] == "MANUFACTURER":
+        my_company = str(user.get("company") or "").lower()
+        
+        filtered = []
+        for log in logs:
+            mfg = str(log.get("fields", {}).get("manufacturer", {}).get("value") or "").lower()
+            if my_company in mfg:
+                filtered.append(log)
+            # Fallback for dummy scans that failed OCR but belong to Acme for testing
+            elif "acme" in my_company and not mfg:
+                filtered.append(log)
+        return filtered
+        
+    # Inspectors see everything
+    return logs
 
 @app.get("/report/{scan_id}")
-async def get_report(scan_id: str):
+async def get_report(scan_id: str, type: str = "audit"):
+    from fastapi.responses import FileResponse
     log = fetch_log_by_scan_id(scan_id)
     if not log:
         raise HTTPException(status_code=404, detail="Scan not found")
         
     out_pdf = f"report_{scan_id[:8]}.pdf"
-    render_pdf_report(log, out_pdf)
+    render_pdf_report(log, out_pdf, report_type=type)
     
-    return {"message": "Report generated", "pdf_path": out_pdf}
+    return FileResponse(out_pdf, media_type='application/pdf', filename=out_pdf)
 
 class NoticeCreateRequest(BaseModel):
     product_name: str
@@ -203,15 +291,52 @@ async def api_create_notice(scan_id: str, req: NoticeCreateRequest):
         violations=req.violations,
         fine_amount=req.fine_amount
     )
+    
+    # --- AUTOMATED EMAIL SYSTEM (MOCK) ---
+    import asyncio
+    async def send_mock_email():
+        print(f"\n[EMAIL SYSTEM] Preparing to send Notice {notice_id} to {req.manufacturer}...")
+        log = fetch_log_by_scan_id(scan_id)
+        if log:
+            # Generate the actual PDF report to attach to the email
+            os.makedirs("sent_emails", exist_ok=True)
+            out_pdf = f"sent_emails/Notice_{notice_id}.pdf"
+            render_pdf_report(log, out_pdf, report_type="audit")
+            
+            await asyncio.sleep(2) # Simulate network delay
+            
+            # Format a fake email address from the manufacturer name
+            fake_email = f"compliance@{req.manufacturer.replace(' ', '').lower()}.com"
+            print(f"[EMAIL SYSTEM] SUCCESS: Email successfully sent to {fake_email}")
+            print(f"[EMAIL SYSTEM] Attachment generated: {out_pdf}\n")
+    
+    # Run the email task in the background
+    asyncio.create_task(send_mock_email())
+    # --------------------------------------
+    
     return {"message": "Notice created", "notice_id": notice_id}
 
-@app.get("/notices/", dependencies=[Depends(RequireRole(["INSPECTOR", "MANUFACTURER"]))])
-async def api_get_notices():
-    return fetch_notices()
+@app.get("/notices/")
+async def api_get_notices(user: dict = Depends(RequireRole(["INSPECTOR", "MANUFACTURER"]))):
+    notices = fetch_notices()
+    
+    # Data Isolation (Multi-Tenancy): Manufacturers only see their own notices
+    if user["role"] == "MANUFACTURER":
+        my_company = str(user.get("company") or "").lower()
+        
+        filtered = []
+        for n in notices:
+            if my_company in str(n.get("manufacturer", "")).lower():
+                filtered.append(n)
+        return filtered
+        
+    # Inspectors see everything
+    return notices
 
 @app.put("/notices/{notice_id}/status")
-async def api_update_notice_status(notice_id: str, req: NoticeStatusUpdateRequest, role: str = Depends(RequireRole(["INSPECTOR", "MANUFACTURER"]))):
+async def api_update_notice_status(notice_id: str, req: NoticeStatusUpdateRequest, user: dict = Depends(RequireRole(["INSPECTOR", "MANUFACTURER"]))):
     # Enforce role-based status transition logic
+    role = user["role"]
     if role == "MANUFACTURER" and req.status != "SUBMITTED":
         raise HTTPException(status_code=403, detail="Manufacturers can only update status to SUBMITTED.")
     if role == "INSPECTOR" and req.status not in ["RESOLVED", "REJECTED"]:
@@ -270,6 +395,50 @@ Keep responses short (2-4 sentences max) unless a detailed explanation is needed
         )
         reply = response.choices[0].message.content.strip()
         return {"reply": reply}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI error: {str(e)}")
+
+@app.get("/api/v1/ingredients/alternatives")
+async def get_ingredient_alternatives(ingredient: str):
+    from groq import Groq
+    import json
+    
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="AI service not configured.")
+        
+    system_prompt = """You are an expert in cosmetic and food chemistry and Indian Legal Metrology compliance.
+The user will provide a toxic or non-compliant ingredient.
+Your task is to suggest 3 safe, compliant, and widely available alternative ingredients.
+Provide the response as a valid JSON array of objects. Each object must have exactly two string keys: "name" and "reason".
+Do not output any markdown formatting, only the raw JSON array."""
+
+    try:
+        client = Groq(api_key=api_key)
+        response = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Suggest alternatives for: {ingredient}"}
+            ],
+            max_tokens=512,
+            temperature=0.3,
+        )
+        
+        reply = response.choices[0].message.content.strip()
+        if reply.startswith("```json"):
+            reply = reply[7:]
+        elif reply.startswith("```"):
+            reply = reply[3:]
+        if reply.endswith("```"):
+            reply = reply[:-3]
+            
+        try:
+            alternatives = json.loads(reply.strip())
+        except json.JSONDecodeError:
+            alternatives = [{"name": "Error parsing AI response", "reason": reply}]
+            
+        return {"alternatives": alternatives}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI error: {str(e)}")
 

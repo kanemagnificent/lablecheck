@@ -91,7 +91,7 @@ export default function LandingPage() {
       >
         <button 
           onClick={() => handleRoleSelect('USER')}
-          className="group flex-1 flex flex-col items-start gap-4 bg-gray-900 hover:bg-black text-white p-6 rounded-2xl transition-all shadow-[0_4px_14px_0_rgb(0,0,0,0.1)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] hover:-translate-y-0.5 text-left"
+          className="group flex-1 flex flex-col items-start gap-4 bg-gray-900 hover:bg-black text-white p-6 rounded-2xl transition-all shadow-[0_4px_14px_0_rgb(0,0,0,0.1)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] hover:-translate-y-0.5 active:scale-95 text-left"
           aria-label={t('scanShopper')}
         >
           <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
@@ -105,7 +105,7 @@ export default function LandingPage() {
 
         <button 
           onClick={() => handleRoleSelect('MANUFACTURER')}
-          className="group flex-1 flex flex-col items-start gap-4 bg-white hover:bg-gray-50 border border-gray-200 p-6 rounded-2xl transition-all shadow-sm hover:shadow hover:-translate-y-0.5 text-left"
+          className="group flex-1 flex flex-col items-start gap-4 bg-white hover:bg-gray-50 border border-gray-200 p-6 rounded-2xl transition-all shadow-sm hover:shadow hover:-translate-y-0.5 active:scale-95 text-left"
           aria-label={t('signInManufacturer')}
         >
           <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
@@ -119,7 +119,7 @@ export default function LandingPage() {
 
         <button 
           onClick={() => handleRoleSelect('INSPECTOR')}
-          className="group flex-1 flex flex-col items-start gap-4 bg-white hover:bg-gray-50 border border-gray-200 p-6 rounded-2xl transition-all shadow-sm hover:shadow hover:-translate-y-0.5 text-left"
+          className="group flex-1 flex flex-col items-start gap-4 bg-white hover:bg-gray-50 border border-gray-200 p-6 rounded-2xl transition-all shadow-sm hover:shadow hover:-translate-y-0.5 active:scale-95 text-left"
           aria-label={t('signInInspector')}
         >
           <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
