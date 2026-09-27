@@ -36,6 +36,13 @@ export default function InspectorDashboard() {
     .sort((a, b) => b.count - a.count)
     .slice(0, 6);
 
+  // Dynamic hotspot calculation based on real scans
+  const districtCounts: Record<string, number> = {};
+  scans.filter(s => s.status !== 'COMPLIANT' && s.location?.district).forEach(s => {
+    districtCounts[s.location!.district] = (districtCounts[s.location!.district] || 0) + 1;
+  });
+  const topDistrict = Object.entries(districtCounts).sort((a, b) => b[1] - a[1])[0];
+
   return (
     <div className="max-w-[1200px] mx-auto space-y-6">
       <div className="flex justify-between items-end">
@@ -107,15 +114,25 @@ export default function InspectorDashboard() {
               )
             ) : (
               <div className="w-full h-full bg-[#f8fafc] rounded-lg border border-gray-200 flex items-center justify-center overflow-hidden relative">
-                {/* Fallback mock map rendering since loading topojson dynamically can be tricky in mock env */}
                 <div className="absolute inset-0 opacity-20 bg-[url('https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/India_blank_map.svg/1000px-India_blank_map.svg.png')] bg-contain bg-no-repeat bg-center mix-blend-multiply" />
                 <div className="relative z-10 w-full h-full flex flex-col items-center justify-center pointer-events-none">
-                   <div className="bg-red-500/20 w-32 h-32 rounded-full absolute top-[30%] left-[20%] animate-pulse border border-red-500" />
-                   <div className="bg-amber-500/20 w-24 h-24 rounded-full absolute bottom-[40%] right-[30%] border border-amber-500" />
-                   <div className="bg-white/90 backdrop-blur p-3 rounded-lg shadow-lg border border-gray-200 pointer-events-auto absolute top-4 left-4">
-                     <p className="text-xs font-bold text-gray-500 uppercase">Hotspot Alert</p>
-                     <p className="text-sm font-bold text-gray-900">Pune District: High violation rate</p>
-                   </div>
+                   {topDistrict ? (
+                     <>
+                       <div className="bg-red-500/20 w-32 h-32 rounded-full absolute top-[30%] left-[20%] animate-pulse border border-red-500 flex items-center justify-center">
+                         <div className="w-2 h-2 bg-red-600 rounded-full" />
+                       </div>
+                       <div className="bg-white/90 backdrop-blur p-3 rounded-lg shadow-lg border border-gray-200 pointer-events-auto absolute top-4 left-4">
+                         <p className="text-xs font-bold text-gray-500 uppercase">Hotspot Alert</p>
+                         <p className="text-sm font-bold text-gray-900">{topDistrict[0]}: {topDistrict[1]} violations</p>
+                       </div>
+                     </>
+                   ) : (
+                     <div className="bg-white/90 backdrop-blur p-4 rounded-lg shadow-sm border border-gray-200 text-center pointer-events-auto">
+                       <MapIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                       <p className="text-sm font-bold text-gray-900">No Hotspots Detected</p>
+                       <p className="text-xs text-gray-500">Awaiting user scans with geolocation.</p>
+                     </div>
+                   )}
                 </div>
               </div>
             )}

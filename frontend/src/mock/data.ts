@@ -163,7 +163,7 @@ export function adaptBackendScan(backendData: any): ScanResult {
     toxicityFlags,
     toxicityScore,
     carbonFootprint,
-    location: { lat: 19.0760, lng: 72.8777, district: "Mumbai" }, // Default mock location
+    location: backendData.location ? { lat: backendData.location.lat, lng: backendData.location.lng, district: backendData.location.district } : undefined,
     extractedData,
     aiAnalysis: backendData.ai_analysis ? {
       executiveSummary: backendData.ai_analysis.executive_summary,
