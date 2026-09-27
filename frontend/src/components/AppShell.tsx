@@ -10,7 +10,6 @@ import { useTranslation } from '../lib/i18n';
 import { fetchLogs, fetchNotices } from '../lib/api';
 import { adaptBackendScan } from '../mock/data';
 import { useEffect, useState } from 'react';
-import { ThemeToggle } from './ThemeToggle';
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const { role, setRole, locale, setLocale, isInitialized, setInitialized, setScans, setNotices, isAuthenticated, logout } = useAppStore();
@@ -60,7 +59,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="flex items-center gap-4">
-            <ThemeToggle />
             <select
               value={locale}
               onChange={(e) => setLocale(e.target.value as Locale)}

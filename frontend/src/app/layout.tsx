@@ -4,7 +4,6 @@ import "./globals.css";
 import AppShell from "../components/AppShell";
 import ChatBot from "../components/ChatBot";
 import { Toaster } from 'react-hot-toast';
-import { ThemeProvider } from "../components/ThemeProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -28,14 +27,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} antialiased text-gray-900 bg-white dark:bg-gray-950 dark:text-gray-100 selection:bg-gray-200 dark:selection:bg-gray-800 selection:text-gray-900 dark:selection:text-gray-100 transition-colors duration-300`}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <Toaster position="bottom-center" toastOptions={{ style: { background: '#111827', color: '#fff', borderRadius: '8px' } }} />
-          <AppShell>
-            {children}
-          </AppShell>
-          <ChatBot />
-        </ThemeProvider>
+      <body className={`${inter.className} antialiased text-gray-900 bg-white selection:bg-gray-200 selection:text-gray-900`}>
+        <Toaster position="bottom-center" toastOptions={{ style: { background: '#111827', color: '#fff', borderRadius: '8px' } }} />
+        <AppShell>
+          {children}
+        </AppShell>
+        <ChatBot />
       </body>
     </html>
   );
