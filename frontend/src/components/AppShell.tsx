@@ -10,6 +10,7 @@ import { useTranslation } from '../lib/i18n';
 import { fetchLogs, fetchNotices } from '../lib/api';
 import { adaptBackendScan } from '../mock/data';
 import { useEffect, useState } from 'react';
+import { ThemeToggle } from './ThemeToggle';
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const { role, setRole, locale, setLocale, isInitialized, setInitialized, setScans, setNotices, isAuthenticated, logout } = useAppStore();
@@ -46,23 +47,24 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   // Don't render the shell nav on auth pages to give them a clean slate
   if (pathname.includes('/auth/')) {
-    return <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">{children}</div>;
+    return <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300">{children}</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col text-gray-900 font-sans">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300">
+      <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50 transition-colors duration-300">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CheckCircle className="text-gray-900 w-6 h-6" />
+            <CheckCircle className="text-gray-900 dark:text-gray-100 w-6 h-6 transition-colors duration-300" />
             <Link href="/" className="font-bold text-xl tracking-tight">LabelCheck</Link>
           </div>
 
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             <select
               value={locale}
               onChange={(e) => setLocale(e.target.value as Locale)}
-              className="bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-xs font-semibold focus:ring-2 focus:ring-gray-900 outline-none uppercase"
+              className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md px-3 py-1.5 text-xs font-semibold focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100 outline-none uppercase transition-colors duration-300"
               aria-label="Select Language"
             >
               <option value="en">EN</option>
