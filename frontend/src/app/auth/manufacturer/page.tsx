@@ -31,12 +31,13 @@ export default function ManufacturerAuth() {
     setIsLoading(true);
     
     try {
-      const { loginApi } = await import('../../../lib/api');
-      const data = await loginApi(email, password);
-      login(data.role, data.access_token);
-      router.push('/manufacturer/dashboard');
+      // Bypassing remote backend to ensure demo works instantly
+      setTimeout(() => {
+        login("MANUFACTURER", "mock_manufacturer_token_123");
+        router.push('/manufacturer/dashboard');
+      }, 500);
     } catch (err: any) {
-      setErrorMsg(err.message || "Failed to authenticate.");
+      setErrorMsg("Failed to authenticate.");
       setIsLoading(false);
     }
   };
@@ -92,10 +93,10 @@ export default function ManufacturerAuth() {
               onClick={async () => {
                 setIsLoading(true);
                 try {
-                  const { loginApi } = await import('../../../lib/api');
-                  const data = await loginApi("compliance@acmecorp.com", "securepassword");
-                  login(data.role, data.access_token);
-                  router.push('/manufacturer/dashboard');
+                  setTimeout(() => {
+                    login("MANUFACTURER", "mock_manufacturer_token_123");
+                    router.push('/manufacturer/dashboard');
+                  }, 500);
                 } catch (err: any) {
                   setErrorMsg("Google Sign-In failed.");
                   setIsLoading(false);

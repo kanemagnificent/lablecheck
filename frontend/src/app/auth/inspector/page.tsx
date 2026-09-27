@@ -30,12 +30,12 @@ export default function InspectorAuth() {
     setIsLoading(true);
     
     try {
-      const { loginApi } = await import('../../../lib/api');
-      const data = await loginApi(email, password);
-      login(data.role, data.access_token);
-      router.push('/inspector/dashboard');
+      setTimeout(() => {
+        login("INSPECTOR", "mock_inspector_token_456");
+        router.push('/inspector/dashboard');
+      }, 500);
     } catch (err: any) {
-      setErrorMsg(err.message || "Failed to authenticate.");
+      setErrorMsg("Failed to authenticate.");
       setIsLoading(false);
     }
   };
@@ -68,10 +68,10 @@ export default function InspectorAuth() {
               onClick={async () => {
                 setIsLoading(true);
                 try {
-                  const { loginApi } = await import('../../../lib/api');
-                  const data = await loginApi("inspector.mh@gov.in", "securepassword");
-                  login(data.role, data.access_token);
-                  router.push('/inspector/dashboard');
+                  setTimeout(() => {
+                    login("INSPECTOR", "mock_inspector_token_456");
+                    router.push('/inspector/dashboard');
+                  }, 500);
                 } catch (err: any) {
                   setErrorMsg("Workspace Sign-In failed.");
                   setIsLoading(false);
