@@ -12,7 +12,7 @@ export default function ManufacturerAuth() {
   const login = useAppStore(state => state.login);
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("compliance@acmecorp.com");
-  const [password, setPassword] = useState("password123");
+  const [password, setPassword] = useState("securepassword");
   const [errorMsg, setErrorMsg] = useState("");
 
   const handleSimulatedLogin = async (e?: React.FormEvent) => {
@@ -93,7 +93,7 @@ export default function ManufacturerAuth() {
                 setIsLoading(true);
                 try {
                   const { loginApi } = await import('../../../lib/api');
-                  const data = await loginApi("compliance@acmecorp.com", "password123");
+                  const data = await loginApi("compliance@acmecorp.com", "securepassword");
                   login(data.role, data.access_token);
                   router.push('/manufacturer/dashboard');
                 } catch (err: any) {
