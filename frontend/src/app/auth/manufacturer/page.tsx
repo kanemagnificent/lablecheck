@@ -88,7 +88,19 @@ export default function ManufacturerAuth() {
 
           <div className="space-y-4">
             <button
-              onClick={handleSimulatedLogin}
+              type="button"
+              onClick={async () => {
+                setIsLoading(true);
+                try {
+                  const { loginApi } = await import('../../../lib/api');
+                  const data = await loginApi("compliance@acmecorp.com", "password123");
+                  login(data.role, data.access_token);
+                  router.push('/manufacturer/dashboard');
+                } catch (err: any) {
+                  setErrorMsg("Google Sign-In failed.");
+                  setIsLoading(false);
+                }
+              }}
               disabled={isLoading}
               className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 text-gray-700 px-4 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-black outline-none disabled:opacity-50"
             >
