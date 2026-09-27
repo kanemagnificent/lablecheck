@@ -51,16 +51,16 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col text-gray-900 font-sans">
-      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200/60 sticky top-0 z-50">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CheckCircle className="text-gray-900 w-6 h-6" />
             <Link href="/" className="font-bold text-xl tracking-tight">LabelCheck</Link>
           </div>
-          
+
           <div className="flex items-center gap-4">
-            <select 
-              value={locale} 
+            <select
+              value={locale}
               onChange={(e) => setLocale(e.target.value as Locale)}
               className="bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-xs font-semibold focus:ring-2 focus:ring-gray-900 outline-none uppercase"
               aria-label="Select Language"
@@ -77,7 +77,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </div>
             ) : (
               <div className="relative">
-                <button 
+                <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                   className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 transition-colors rounded-full px-3 py-1.5 text-sm font-medium outline-none focus:ring-2 focus:ring-gray-900"
                 >
@@ -87,7 +87,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   <span className="hidden sm:inline">{role === 'MANUFACTURER' ? 'Acme Corp' : 'Inspector'}</span>
                   <ChevronDown className="w-4 h-4 text-gray-500" />
                 </button>
-                
+
                 {isProfileOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)}></div>
@@ -96,7 +96,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                         <p className="text-sm font-medium text-gray-900">{role === 'MANUFACTURER' ? 'Acme Corporation' : 'Official Portal'}</p>
                         <p className="text-xs text-gray-500 truncate">{role === 'MANUFACTURER' ? 'compliance@acmecorp.com' : 'inspector.mh@gov.in'}</p>
                       </div>
-                      <button 
+                      <button
                         onClick={() => {
                           logout();
                           setIsProfileOpen(false);
@@ -116,7 +116,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       {/* Top Nav for Desktop (Hidden on mobile) */}
-      <nav className="hidden sm:block border-b border-gray-200/60 bg-white/60 backdrop-blur-sm">
+      <nav className="hidden sm:block border-b border-gray-200 bg-white">
         <div className="max-w-5xl mx-auto px-4 h-12 flex items-center gap-6">
           {role === 'USER' && (
             <>
@@ -150,7 +150,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </main>
 
       {/* Bottom Nav for Mobile */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/85 backdrop-blur-md border-t border-gray-200/60 sm:hidden pb-safe z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 sm:hidden pb-safe z-50">
         <div className="flex justify-around items-center h-16">
           {role === 'USER' && (
             <>
