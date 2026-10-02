@@ -222,7 +222,8 @@ def startup_event():
     create_user("compliance@nestle.com", pwd_context.hash("securepassword"), "MANUFACTURER", "Nestle")
 
 @app.post("/api/v1/auth/login")
-async def login(req: LoginRequest):
+@limiter.limit("10/minute")
+async def login(request: Request, req: LoginRequest):
     user = get_user_by_email(req.email)
     
     if not user or not pwd_context.verify(req.password, user["password_hash"]):
@@ -237,7 +238,8 @@ async def login(req: LoginRequest):
 # ------------------------
 
 @app.get("/logs/")
-async def get_logs(user: dict = Depends(RequireRole(["INSPECTOR", "MANUFACTURER"]))):
+@limiter.limit("30/minute")
+async def get_logs(request: Request, user: dict = Depends(RequireRole(["INSPECTOR", "MANUFACTURER"]))):
     logs = fetch_all_logs()
     
     # Data Isolation (Multi-Tenancy): Manufacturers only see their own logs
@@ -258,7 +260,8 @@ async def get_logs(user: dict = Depends(RequireRole(["INSPECTOR", "MANUFACTURER"
     return logs
 
 @app.get("/report/{scan_id}")
-async def get_report(scan_id: str, type: str = "audit"):
+@limiter.limit("10/minute")
+async def get_report(request: Request, scan_id: str, type: str = "audit"):
     from fastapi.responses import FileResponse
     log = fetch_log_by_scan_id(scan_id)
     if not log:
@@ -280,7 +283,8 @@ class NoticeStatusUpdateRequest(BaseModel):
     status: str
 
 @app.post("/notices/{scan_id}", dependencies=[Depends(RequireRole(["INSPECTOR"]))])
-async def api_create_notice(scan_id: str, req: NoticeCreateRequest):
+@limiter.limit("10/minute")
+async def api_create_notice(request: Request, scan_id: str, req: NoticeCreateRequest):
     notice_id = f"LM-{str(uuid.uuid4())[:8].upper()}"
     create_notice(
         notice_id=notice_id,
@@ -317,7 +321,8 @@ async def api_create_notice(scan_id: str, req: NoticeCreateRequest):
     return {"message": "Notice created", "notice_id": notice_id}
 
 @app.get("/notices/")
-async def api_get_notices(user: dict = Depends(RequireRole(["INSPECTOR", "MANUFACTURER"]))):
+@limiter.limit("30/minute")
+async def api_get_notices(request: Request, user: dict = Depends(RequireRole(["INSPECTOR", "MANUFACTURER"]))):
     notices = fetch_notices()
     
     # Data Isolation (Multi-Tenancy): Manufacturers only see their own notices
@@ -334,7 +339,8 @@ async def api_get_notices(user: dict = Depends(RequireRole(["INSPECTOR", "MANUFA
     return notices
 
 @app.put("/notices/{notice_id}/status")
-async def api_update_notice_status(notice_id: str, req: NoticeStatusUpdateRequest, user: dict = Depends(RequireRole(["INSPECTOR", "MANUFACTURER"]))):
+@limiter.limit("10/minute")
+async def api_update_notice_status(request: Request, notice_id: str, req: NoticeStatusUpdateRequest, user: dict = Depends(RequireRole(["INSPECTOR", "MANUFACTURER"]))):
     # Enforce role-based status transition logic
     role = user["role"]
     if role == "MANUFACTURER" and req.status != "SUBMITTED":
@@ -358,7 +364,8 @@ class ChatRequest(BaseModel):
     history: Optional[List[ChatMessage]] = None
 
 @app.post("/chat/")
-async def chat_endpoint(req: ChatRequest):
+@limiter.limit("20/minute")
+async def chat_endpoint(request: Request, req: ChatRequest):
     from groq import Groq
     api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
@@ -399,7 +406,8 @@ Keep responses short (2-4 sentences max) unless a detailed explanation is needed
         raise HTTPException(status_code=500, detail=f"AI error: {str(e)}")
 
 @app.get("/api/v1/ingredients/alternatives")
-async def get_ingredient_alternatives(ingredient: str):
+@limiter.limit("10/minute")
+async def get_ingredient_alternatives(request: Request, ingredient: str):
     from groq import Groq
     import json
     
