@@ -7,6 +7,7 @@ import { ShieldAlert, Info, ArrowLeft, Download, FileText, CheckCircle, AlertCir
 import { motion, AnimatePresence } from 'framer-motion';
 import { issueNotice, getIngredientAlternatives } from '../../../lib/api';
 import toast from 'react-hot-toast';
+import { jsPDF } from 'jspdf';
 
 export default function ResultsPage() {
   const { id } = useParams();
@@ -123,6 +124,83 @@ export default function ResultsPage() {
     }, 800);
   };
 
+  const handleGeneratePDF = () => {
+    if (!scan) return;
+    
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.text("DEPARTMENT OF LEGAL METROLOGY", 105, 20, { align: "center" });
+    
+    doc.setFontSize(14);
+    doc.text("NOTICE OF NON-COMPLIANCE", 105, 30, { align: "center" });
+    
+    doc.setLineWidth(0.5);
+    doc.line(20, 35, 190, 35);
+    
+    // Details
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 45);
+    doc.text(`Notice ID: LMN-${scan.id.substring(0, 8).toUpperCase()}`, 140, 45);
+    
+    doc.setFont("helvetica", "bold");
+    doc.text(`To:`, 20, 60);
+    doc.setFont("helvetica", "normal");
+    doc.text(`The Compliance Officer`, 20, 67);
+    doc.text(`${scan.manufacturer}`, 20, 74);
+    
+    doc.text(`Subject: Violation of Legal Metrology (Packaged Commodities) Rules, 2011`, 20, 90);
+    
+    let yPos = 105;
+    
+    doc.text(`This is to officially notify you that during a recent inspection, the following product was`, 20, yPos);
+    yPos += 7;
+    doc.text(`found to be in violation of mandatory packaging regulations:`, 20, yPos);
+    
+    yPos += 15;
+    doc.setFont("helvetica", "bold");
+    doc.text(`Product Details:`, 20, yPos);
+    doc.setFont("helvetica", "normal");
+    yPos += 7;
+    doc.text(`Name: ${scan.productName}`, 25, yPos);
+    yPos += 7;
+    doc.text(`Category: ${scan.category}`, 25, yPos);
+    
+    yPos += 15;
+    doc.setFont("helvetica", "bold");
+    doc.text(`Violations Detected:`, 20, yPos);
+    doc.setFont("helvetica", "normal");
+    
+    scan.violations.forEach((v, index) => {
+      yPos += 7;
+      doc.text(`${index + 1}. ${v.field.replace('_', ' ')}`, 25, yPos);
+      yPos += 5;
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Rule Citation: ${v.ruleCitation}`, 30, yPos);
+      doc.setFontSize(11);
+      doc.setTextColor(0, 0, 0);
+    });
+    
+    yPos += 20;
+    doc.text(`You are hereby directed to rectify the aforementioned violations within 14 days of`, 20, yPos);
+    yPos += 7;
+    doc.text(`receiving this notice. Failure to comply will result in further legal action.`, 20, yPos);
+    
+    yPos += 25;
+    doc.text(`Issued by,`, 140, yPos);
+    yPos += 10;
+    doc.setFont("helvetica", "bold");
+    doc.text(`Inspector of Legal Metrology`, 140, yPos);
+    
+    doc.save(`Legal_Notice_${scan.productName.replace(/\s+/g, '_')}.pdf`);
+    toast.success("Legal Notice PDF Generated Successfully!");
+  };
+
   // Count severities (Must be before early return)
   const counts = useMemo(() => {
     if (!scan) return { CRITICAL: 0, MAJOR: 0, MINOR: 0 };
@@ -151,10 +229,10 @@ export default function ResultsPage() {
         </button>
         {(role === 'INSPECTOR' || role === 'MANUFACTURER') && (
           <button 
-            onClick={() => window.print()} 
+            onClick={handleGeneratePDF} 
             className="flex items-center gap-2 text-sm font-medium bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors shadow-sm"
           >
-            <FileText className="w-4 h-4" /> Export Editable PDF Report
+            <Download className="w-4 h-4" /> Download Legal PDF
           </button>
         )}
       </div>
@@ -462,7 +540,7 @@ export default function ResultsPage() {
                     </button>
                     <button 
                       onClick={() => {
-                        window.print();
+                        handleGeneratePDF();
                         handleIssueNotice();
                       }}
                       disabled={isSending}
